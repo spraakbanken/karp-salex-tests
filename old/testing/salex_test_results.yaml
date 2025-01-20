@@ -1,0 +1,15 @@
+resource_id: salex_test_results
+resource_name: Salex test results
+fields:
+  entry_id: {type: string, required: true}
+  entry_version: {type: number, required: true}
+  test_name: {type: string, required: true}
+  test_data:
+    type: object
+    collection: true
+    additionalProperties: true
+    fields: {}
+  status: {type: string, required: true}
+additionalProperties: false
+sort: test_name
+protected: {read: true}
