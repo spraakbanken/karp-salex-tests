@@ -137,7 +137,7 @@ for example, classes in examples.items():
             problematic_cases.append(entry)
 
     if problematic_cases:
-        print(f'{example}: appears {number(max_count, "time")} as {next(iter(most_common_classes))} but also as:')
+        print(f"{example}: appears {number(max_count, 'time')} as {next(iter(most_common_classes))} but also as:")
 
         for entry in problematic_cases:
             word = entry.entry.get("ortografi")

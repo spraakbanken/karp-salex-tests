@@ -93,6 +93,6 @@ for bkl, classes in inflectionclasses.items():
             break
 
     if len(covering_classes) > 1:
-        print(f'{bkl} is used for {", ".join(covering_classes)}')
+        print(f"{bkl} is used for {', '.join(covering_classes)}")
 
 exit()

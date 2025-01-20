@@ -32,6 +32,6 @@ for entry in tqdm.tqdm(entries):
 
 for böjning, words in böjningar.items():
     if len(words) > 1:
-        print(f'{böjning}: {", ".join(words)}')
+        print(f"{böjning}: {', '.join(words)}")
 
 exit()

@@ -42,18 +42,12 @@ def guess_keys(resource_config, entries, key_threshold=0.95):
     return {field: field_values[field] for field in result}
 
 
-def guess_references(resource_config, entries, keys, ref_threshold=0.95):
-    fields = resource_config.nested_fields()
-
-    for field in fields:
-        for key, values in keys.items():
-
 resource_config = resource_queries.by_resource_id("salex").config
 entries = list(entry_queries.all_entries("salex", expand_plugins=False))
-#with open("entries.pickle", "rb") as file:
+# with open("entries.pickle", "rb") as file:
 #    entries = pickle.load(file)
 
 for key, values in guess_keys(resource_config, entries).items():
-   print(key, len(values))
+    print(key, len(values))
 
 exit()

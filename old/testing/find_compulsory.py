@@ -87,11 +87,11 @@ print()
 
 print("Fields missing <=5% of the time:")
 for stat in sorted(usually_present, key=lambda stat: (stat.missing_freq, stat.field)):
-    print(f"{stat.field}: missing {stat.missing} times out of {stat.total} ({stat.missing_freq*100}%)")
+    print(f"{stat.field}: missing {stat.missing} times out of {stat.total} ({stat.missing_freq * 100}%)")
 print()
 
 print("Fields present <=5% of the time:")
 for stat in sorted(usually_missing, key=lambda stat: (stat.present_freq, stat.field)):
-    print(f"{stat.field}: present {stat.present} times out of {stat.total} ({stat.present_freq*100}%)")
+    print(f"{stat.field}: present {stat.present} times out of {stat.total} ({stat.present_freq * 100}%)")
 
 exit()

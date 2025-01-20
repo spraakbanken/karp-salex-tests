@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 Tree = list[Union[str, "Tag"]]
 
+
 @dataclass
 class Tag:
     tag: str
@@ -27,6 +28,7 @@ class MarkupTransformer(Transformer):
     tag = lambda _, args: Tag(tag=args[0].value, contents=args[1])
     text = lambda _, args: args[0].value
     TEXT = lambda _, tok: tok.update(value=tok.replace(r"\[", "[").replace(r"\]", "]").replace(r"\\", "\\"))
+
 
 parser = Lark(GRAMMAR, parser="lalr", transformer=MarkupTransformer())
 
