@@ -41,6 +41,7 @@ GRAMMAR = r"""
     UNESCAPED_CHAR: /[^\[\]\\]/
 """
 
+
 class MarkupTransformer(Transformer):
     markup = lambda _, args: args
     tag = lambda _, args: Element(tag=args[0].value, contents=args[1])
