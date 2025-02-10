@@ -161,3 +161,15 @@ def find_refs_in_namespace(entry, namespace):
 def find_refs(entry):
     yield from find_refs_in_namespace(entry.get("so", {}), SO)
     yield from find_refs_in_namespace(entry.get("saol", {}), SAOL)
+
+
+def entry_name(entry, namespace):
+    ortografi = entry.entry["ortografi"]
+    match namespace:
+        case Namespace.SO: homografNr = entry.entry.get("so", {}).get("homografNr")
+        case Namespace.SAOL: homografNr = entry.entry.get("saol", {}).get("homografNr")
+
+    if homografNr is None:
+        return ortografi
+    else:
+        return f'{homografNr} {ortografi}'
