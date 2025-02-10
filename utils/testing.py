@@ -1,54 +1,57 @@
-"""Support for running tests and generating warnings."""
+"""
+Support for running tests and generating warnings.
 
-# Not yet working
+Currently writes warnings to a CSV file.
+"""
 
-import karp.foundation.json as json
-from karp_api import *
-from copy import deepcopy
+from abc import abstractmethod
 import pydantic
-from karp.search.domain import QueryRequest
+from typing import Iterator, Iterable, Self
+import csv
 
 
 class Warning(pydantic.BaseModel):
-    # TODO: resource id
     entry_id: str
-    entry_version: int
-    test_name: str
-    test_results: list[dict]
-    status: str
+    ord: str
+
+    @property
+    @abstractmethod
+    def identifier(self) -> object:
+        raise NotImplementedError
+
+
+def remove_warnings(w1, w2):
+    identifiers = {w.identifier for w in w2}
+    return [w for w in w1 if w.identifier not in identifiers]
+
+
+def write_warnings(file, warning_cls, warnings):
+    assert all(type(w) == warning_cls for w in warnings)
+
+    writer = csv.DictWriter(file, warning_cls.model_fields.keys())
+    writer.writeheader()
+    for w in warnings:
+        writer.writerow(w.model_dump())
+
+
+def read_warnings(file, warning_cls):
+    reader = csv.DictReader(file)
+    return [warning_cls(**row) for row in reader]
+
+
+class Tester:
+    name: str
+    warning_cls: type[Warning]
+
+    @abstractmethod
+    def test(self, entry) -> Iterable[Warning]:
+        raise NotImplementedError()
 
     @classmethod
-    def make(cls, entry, test_name, test_results):
-        return cls(
-            entry_id=entry.id, entry_version=entry.version, test_name=test_name, test_results=test_results, status="new"
-        )
+    def read_results(cls, file) -> Iterator[Warning]:
+        return read_warnings(file, cls.warning_cls)
 
-
-def find_existing_warning(test_resource, resource, warning):
-    query = QueryRequest(
-        resources=[test_resource],
-        q=f"and(equals|entry_id|{warning.entry_id}||equals|test_name|{warning.test_name})",
-        lexicon_stats=False,
-    )
-
-    results = es_search_service.query(query)
-    # fetch results from MariaDB because Elasticsearch may not store data exactly
-    result_ids = set(result["id"] for result in results)
-    entries = [entry_queries.by_id(id) for id in result_ids]
-    # for it to be an exact match, we also need test_data to match
-    matching = [e for e in entries if e.test_data == warning.test_data]
-
-    # return latest version
-    # (is this right?)
-    # (what if there is a warning for an older version?)
-    # matching.sort(lambda e: e.entry_version)
-    if matching:
-        return matching[0]
-
-
-# TODO: how to make sure warning persists even on edits?
-# e.g. if a new SAOLLemman is added then paths in test_data may change
-# so maybe should separate: identifier, info about how to repro
-# OR: one warning per test_name/entry pair
-# Oh no but: we want NEW warnings to appear even if it's ignored
-# (maybe take away ignored_forever or whatever)
+    def write_results(self, file, entries, old_warnings=[]):
+        warnings = (w for e in entries for w in self.test(e))
+        warnings = remove_warnings(warnings, old_warnings)
+        write_warnings(file, self.warning_cls, warnings)
