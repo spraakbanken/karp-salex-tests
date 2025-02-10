@@ -8,69 +8,97 @@ from abc import abstractmethod
 import pydantic
 from typing import Iterator, Iterable, Self, Optional
 import csv
+from dataclasses import dataclass, field
+from functools import wraps, WRAPPER_ASSIGNMENTS
+
+@dataclass
+class FieldInfo:
+    priority: int
+    info: bool
+
+    def combine(self, other: Self):
+        return FieldInfo(priority=min(self.priority, other.priority), info=self.info or other.info)
+
+@dataclass
+class TesterInfo:
+    field_info: dict[str, FieldInfo] = field(default_factory = dict)
+
+    def add_field(self, field, info: FieldInfo):
+        if field in self.field_info:
+            info = info.combine(self.field_info[field])
+        self.field_info[field] = info
+
+    @property
+    def id_fields(self):
+        return [f for f, info in self.field_info.items() if not info.info]
+
+    @property
+    def fields(self):
+        result = list(self.field_info)
+        result.sort(key=lambda f: self.field_info[f].priority)
+        return result
+
+    def identifier(self, w):
+        return tuple((field, w[field]) for field in sorted(self.id_fields))
 
 
-class Warning(pydantic.BaseModel):
-    @classmethod
-    @abstractmethod
-    def identifier_fields(cls) -> set[str]:
-        raise NotImplementedError()
-
-    def identifier(self) -> tuple:
-        return tuple(getattr(self, x) for x in self.identifier_fields())
+def annotate_tester(tester):
+    if not hasattr(tester, "info"):
+        tester.info = TesterInfo()
 
 
-class PerEntryWarning(Warning):
-    id: Optional[str] = None
-    ortografi: Optional[str] = None
-
-    @classmethod
-    def identifier_fields(cls):
-        return {"id", "ortografi"}
-
-def remove_warnings(w1, w2):
-    identifiers = {w.identifier() for w in w2}
-    return [w for w in w1 if w.identifier() not in identifiers]
+def fields(*args, info=False, priority=10):
+    def inner(tester):
+        annotate_tester(tester)
+        for arg in args:
+            tester.info.add_field(arg, FieldInfo(info=info, priority=priority))
+        return tester
+    return inner
 
 
-def write_warnings(file, warning_cls, warnings):
-    assert all(type(w) == warning_cls for w in warnings)
+def per_entry(tester):
+    annotate_tester(tester)
 
-    writer = csv.DictWriter(file, warning_cls.model_fields.keys())
-    writer.writeheader()
-    for w in warnings:
-        writer.writerow(w.model_dump())
-
-
-def read_warnings(file, warning_cls):
-    reader = csv.DictReader(file)
-    return [warning_cls(**row) for row in reader]
-
-
-class Tester:
-    name: str
-    warning_cls: type[Warning]
-
-    @abstractmethod
-    def test(self, entries) -> Iterable[Warning]:
-        raise NotImplementedError()
-
-    @classmethod
-    def read_results(cls, file) -> Iterator[Warning]:
-        return read_warnings(file, cls.warning_cls)
-
-    def write_results(self, file, entries, old_warnings=[]):
-        warnings = remove_warnings(self.test(entries), old_warnings)
-        write_warnings(file, self.warning_cls, warnings)
-
-
-# Decorators for testers.
-def per_entry(test):
-    def inner(self, entries):
+    @fields("id", "ortografi", priority=0)
+    @wraps(tester, assigned=WRAPPER_ASSIGNMENTS + ("info",))
+    def inner(entries, **kwargs):
         for entry in entries:
-            for w in test(self, entry.entry):
-                w.id = entry.id
-                w.ortografi = entry.entry["ortografi"]
+            for w in tester(entry.entry, **kwargs):
+                w["id"] = entry.id
+                w["ortografi"] = entry.entry["ortografi"]
                 yield w
 
     return inner
+
+
+def diff_warnings(tester, w1, w2):
+    identifiers = {tester.info.identifier(w) for w in w2}
+    return [w for w in w1 if tester.info.identifier(w) not in identifiers]
+
+
+def write_warnings(file, tester, warnings):
+    annotate_tester(tester)
+    writer = csv.DictWriter(file, tester.info.fields)
+    writer.writeheader()
+    for w in warnings:
+        writer.writerow(w)
+
+
+def read_warnings(file):
+    reader = csv.DictReader(file)
+    return list(reader)
+
+
+def test_and_write_csv(tester, entries, path, old_path=None):
+    if old_path:
+        try:
+            with open(old_path, "r") as file:
+                old_warnings = read_warnings(file)
+        except FileNotFoundError:
+            old_warnings = []
+
+    all_warnings = tester(entries)
+    new_warnings = diff_warnings(tester, all_warnings, old_warnings)
+
+    with open(path, "w") as file:
+        write_warnings(file, tester, new_warnings)
