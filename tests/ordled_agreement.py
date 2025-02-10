@@ -1,19 +1,19 @@
-from utils.testing import Tester, Warning
-from utils.salex import entry_name, SAOL
+from utils.testing import Tester, PerEntryWarning, per_entry
 
-class OrdledWarning(Warning):
+class OrdledWarning(PerEntryWarning):
     ordled: str
 
-    @property
-    def identifier(self):
-        return (self.entry_id, self.ord, self.ordled)
+    @classmethod
+    def identifier_fields(cls):
+        return super().identifier_fields() | {"ordled"}
 
 class OrdledTester(Tester):
     warning_cls = OrdledWarning
 
+    @per_entry
     def test(self, entry):
-        ortografi = entry.entry.get("ortografi")
-        ordled = entry.entry.get("saol", {}).get("ordled")
+        ortografi = entry.get("ortografi")
+        ordled = entry.get("saol", {}).get("ordled")
 
         replacements = {
             "·": "",
@@ -38,4 +38,4 @@ class OrdledTester(Tester):
                 squashed_ordled = squashed_ordled.replace(k, v)
 
             if ortografi != squashed_ordled:
-                yield OrdledWarning(entry_id=entry.id, ord=entry_name(entry, SAOL), ordled=ordled)
+                yield OrdledWarning(ordled=ordled)
