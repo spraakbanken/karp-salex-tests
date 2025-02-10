@@ -13,9 +13,9 @@ def entry_is_visible_in_printed_book(entry):
 
 
 def is_visible(path, entry, test=entry_is_visible):
-    return True
-    for i in range(len(path)):
-        if not test(json.get_path(path[:-1], entry)):
+    path = json.make_path(path)
+    for i in range(len(path) + 1):
+        if not test(json.get_path(path[:i], entry)):
             return False
 
     return True
