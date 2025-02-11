@@ -47,7 +47,7 @@ def annotate_tester(tester):
         tester.info = TesterInfo()
 
 
-def fields(*args, info=False, priority=10):
+def fields(*args, info=False, priority=0):
     def inner(tester):
         annotate_tester(tester)
         for arg in args:
@@ -56,17 +56,19 @@ def fields(*args, info=False, priority=10):
     return inner
 
 
+def annotate_entry(entry, w):
+    return {"id": entry.id, "ortografi": entry.entry["ortografi"], **w}
+
+
 def per_entry(tester):
     annotate_tester(tester)
 
-    @fields("id", "ortografi", priority=0)
+    @fields("id", "ortografi", priority=-10)
     @wraps(tester, assigned=WRAPPER_ASSIGNMENTS + ("info",))
     def inner(entries, **kwargs):
         for entry in entries:
             for w in tester(entry.entry, **kwargs):
-                w["id"] = entry.id
-                w["ortografi"] = entry.entry["ortografi"]
-                yield w
+                yield annotate_entry(entry, w)
 
     return inner
 
@@ -89,7 +91,7 @@ def read_warnings(file):
     return list(reader)
 
 
-def test_and_write_csv(tester, entries, path, old_path=None):
+def test_and_write_csv(tester, entries, path, old_path=None, **kwargs):
     if old_path:
         try:
             with open(old_path, "r") as file:
@@ -97,7 +99,7 @@ def test_and_write_csv(tester, entries, path, old_path=None):
         except FileNotFoundError:
             old_warnings = []
 
-    all_warnings = tester(entries)
+    all_warnings = tester(entries, **kwargs)
     new_warnings = diff_warnings(tester, all_warnings, old_warnings)
 
     with open(path, "w") as file:

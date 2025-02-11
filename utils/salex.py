@@ -3,8 +3,9 @@
 import karp.foundation.json as json
 from copy import deepcopy
 from enum import Enum, global_enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
+from karp.lex.domain.dtos import EntryDto
 
 
 def entry_is_visible(entry):
@@ -18,7 +19,8 @@ def entry_is_visible_in_printed_book(entry):
 def is_visible(path, entry, test=entry_is_visible):
     path = json.make_path(path)
     for i in range(len(path) + 1):
-        if not test(json.get_path(path[:i], entry)):
+        subpath = json.get_path(path[:i], entry)
+        if isinstance(subpath, dict) and not test(subpath):
             return False
 
     return True
@@ -45,6 +47,7 @@ class Namespace(Enum):
     SO = 0
     SAOL = 1
 
+    @property
     def path(self):
         match self:
             case Namespace.SO: return "so"
@@ -59,16 +62,27 @@ class IdType(Enum):
     INR = 3
     UNKNOWN = 4
 
+def format_ref(type, id):
+    return f"{str(type).lower()}{id}"
 
-@dataclass
+@dataclass(frozen=True)
 class Id:
     namespace: Namespace
     type: IdType
     id: str
 
+    def format(self):
+        return format_ref(self.type, self.id)
+
+@dataclass
+class IdLocation:
+    entry: EntryDto
     path: list[str]
     text: str
 
+    @property
+    def visible(self):
+        return is_visible(self.path, self.entry.entry)
 
 id_fields = {
     SO: {
@@ -82,7 +96,6 @@ id_fields = {
     },
     SAOL: {
         "id": LNR,
-        "variantformer.id": LNR,
         "huvudbetydelser.id": XNR,
     },
 }
@@ -100,6 +113,7 @@ ref_fields = {
     },
     SAOL: {
         "moderverb": LNR,
+        "variantformer.id": LNR,
         # "enbartDigitalaHänvisningar.hänvisning": None, this is in +refid(...) form
         # "huvudbetydelser.hänvisning": None, this is in +refid(...) form
     },
@@ -108,11 +122,11 @@ ref_fields = {
 
 def find_ids(entry):
     for namespace in id_fields:
-        sub_entry = entry.get(namespace.path(), {})
+        sub_entry = entry.entry.get(namespace.path, {})
         for field, kind in id_fields[namespace].items():
             for path in json.expand_path(field, sub_entry):
                 id = json.get_path(path, sub_entry)
-                yield Id(namespace, kind, id, path, id)
+                yield Id(namespace, kind, id), IdLocation(entry, [namespace.path] + path, id)
 
 
 def parse_ref(kind, ref):
@@ -136,38 +150,37 @@ ref_regexp = re.compile(r"(?<=refid=)[a-zA-Z0-9]*")
 
 
 def find_refs_in_namespace(entry, namespace):
-    for field, kind in ref_fields[namespace].items():
-        for path in json.expand_path(field, entry):
-            orig_ref = json.get_path(path, entry)
-            kind, ref = parse_ref(path, kind, orig_ref)
-            yield Id(namespace, kind, ref, path, orig_ref)
+    body = entry.entry.get(namespace.path, {})
+    for field, orig_kind in ref_fields[namespace].items():
+        for path in json.expand_path(field, body):
+            orig_ref = json.get_path(path, body)
+            kind, ref = parse_ref(orig_kind, orig_ref)
+            yield Id(namespace, kind, ref), IdLocation(entry, [namespace.path] + path, orig_ref)
 
-    for path in json.all_paths(entry):
-        field = json.path_str(path)
+    for path in json.all_paths(body):
+        field = json.path_str(path, strip_positions=True)
         if field in ref_fields[namespace]:
             continue
 
-        value = json.get_path(path, entry)
+        value = json.get_path(path, body)
 
         if not isinstance(value, str):
             continue
 
         results = ref_regexp.findall(value)
         for orig_ref in results:
-            kind, ref = parse_ref(path, None, ref)
-            yield Id(namespace, kind, ref, path, orig_ref)
+            kind, ref = parse_ref(None, orig_ref)
+            yield Id(namespace, kind, ref), IdLocation(entry, [namespace.path] + path, orig_ref)
 
 
 def find_refs(entry):
-    yield from find_refs_in_namespace(entry.get("so", {}), SO)
-    yield from find_refs_in_namespace(entry.get("saol", {}), SAOL)
+    for namespace in [SO, SAOL]:
+        yield from find_refs_in_namespace(entry, namespace)
 
 
 def entry_name(entry, namespace):
     ortografi = entry.entry["ortografi"]
-    match namespace:
-        case Namespace.SO: homografNr = entry.entry.get("so", {}).get("homografNr")
-        case Namespace.SAOL: homografNr = entry.entry.get("saol", {}).get("homografNr")
+    homografNr = entry.entry.get(namespace.path, {}).get("homografNr")
 
     if homografNr is None:
         return ortografi
