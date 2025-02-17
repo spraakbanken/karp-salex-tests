@@ -26,7 +26,6 @@ class Inflection:
         self.extra_inflection_classes = {k: v for k, v in saol.items() if k in so}
 
     def inflected_forms(self, entry, word=None):
-        if word == "ropa ut": breakpoint()
         headword = entry.entry["ortografi"]
         word_class = entry.entry["ordklass"]
         if word_class == "ptv.": word_class = "verb"
