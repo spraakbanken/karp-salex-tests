@@ -5,7 +5,6 @@ from utils.testing import highlight, rich_string_cell
 from dataclasses import dataclass
 from tqdm import tqdm
 import re
-from karp.plugins.inflection_plugin import apply_rules
 from karp.lex.domain.dtos import EntryDto
 
 refid_re = re.compile(r"\+([^ +]*)\(refid=([a-zA-Z0-9]*)\)(?!\(refid=)")
@@ -101,7 +100,7 @@ class BadReferenceSyntax(Warning):
         }
         return result
 
-def test_references(entries, inflection_rules):
+def test_references(entries, inflection):
     ids = {}
     by_ortografi: dict[tuple[Namespace, str], list[Id]] = defaultdict(list)
 
@@ -189,12 +188,12 @@ def test_references(entries, inflection_rules):
                 # Check that target of reference is correct
                 for ref in references:
                     loc = IdLocation(entry, namespace, path, ref.group(0))
-                    word = ref.group(1).replace("_", " ")
+                    word = ref.group(1).replace("_", " ").replace("(", "").replace(")", "")
                     target = ref.group(2)
                     kind, ref = parse_ref(None, target)
                     id = Id(namespace, kind, ref)
                     target_entry = ids[id].entry
-                    target_word = target_entry.entry["ortografi"].replace("(", "").replace(")", "")
+                    target_word = target_entry.entry["ortografi"]
                     target_body = target_entry.entry.get(namespace.path, {})
 
                     if word == target_word: continue
@@ -207,9 +206,7 @@ def test_references(entries, inflection_rules):
                     if word in variant_forms: continue
 
                     # Check to see if we find it as an inflected form
-                    inflection_class = target_entry.entry.get("böjningsklass")
-                    cases = inflection_rules.get(inflection_class, [])
-                    if word not in [apply_rules(w, case["rules"]) for w in [target_word, *variant_forms] for case in cases]:
+                    if word not in [form for w in [target_word, *variant_forms] for form in inflection.inflected_forms(target_entry, w)]:
                         # TODO: report mistakenly pointing at variant
                         # form as a minor error?
                         yield BadReference(loc, id, ids.get(id), f"pekar inte på {word}")
