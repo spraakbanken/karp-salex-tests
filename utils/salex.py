@@ -340,8 +340,8 @@ class EntryWarning(Warning):
     entry: EntryDto
     namespace: Namespace
 
-    def to_dict(self):
-        return {
-            "Ord": entry_cell(self.entry, self.namespace),
-            "Ordbok": self.namespace
-        }
+    def to_dict(self, include_ordbok=False):
+        result = {"Ord": entry_cell(self.entry, self.namespace)}
+        if include_ordbok:
+            result["Ordbok"] = self.namespace
+        return result
