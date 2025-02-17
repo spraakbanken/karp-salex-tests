@@ -69,9 +69,9 @@ def test_references(entries, inflection_rules):
 
     for (namespace, ortografi), homografNrs in by_homografNr.items():
         if len(homografNrs) == 1:
-            yield {"ord": ortografi, "fält": namespace, "hänvisning": "", "hänvisat ord": "", "feltyp": f"onödig homografNr {homografNrs}"}
+            yield {"ord": ortografi, "fält": str(namespace), "hänvisning": "", "hänvisat ord": "", "feltyp": f"onödig homografNr {homografNrs}"}
         elif list(sorted(homografNrs)) != list(range(1, len(homografNrs)+1)):
-            yield {"ord": ortografi, "fält": namespace, "hänvisning": "", "hänvisat ord": "", "feltyp": f"ogiltiga homografNr {homografNrs}"}
+            yield {"ord": ortografi, "fält": str(namespace), "hänvisning": "", "hänvisat ord": "", "feltyp": f"ogiltiga homografNr {homografNrs}"}
 
     for entry in tqdm(entries, desc="Checking references"):
         for ref, loc in find_refs(entry):

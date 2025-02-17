@@ -10,6 +10,8 @@ from typing import Iterator, Iterable, Self, Optional
 import csv
 from dataclasses import dataclass, field
 from functools import wraps, WRAPPER_ASSIGNMENTS
+import xlsxwriter
+import os
 
 @dataclass
 class FieldInfo:
@@ -102,5 +104,21 @@ def test_and_write_csv(tester, entries, path, old_path=None, **kwargs):
     all_warnings = tester(entries, **kwargs)
     new_warnings = diff_warnings(tester, all_warnings, old_warnings)
 
-    with open(path, "w") as file:
-        write_warnings(file, tester, new_warnings)
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    with xlsxwriter.Workbook(path) as workbook:
+        worksheet = workbook.add_worksheet()
+
+        def write_warning(i, w):
+            worksheet.write_row(i+1, 0, (w.get(field, "") for field in tester.info.fields))
+
+        annotate_tester(tester)
+        worksheet.write_row(0, 0, tester.info.fields)
+        for i, w in enumerate(new_warnings):
+            write_warning(i, w)
+
+
+#    with open(path, "w") as file:
+#        write_warnings(file, tester, new_warnings)
