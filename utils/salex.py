@@ -9,7 +9,7 @@ from karp.lex.domain.dtos import EntryDto
 import utils.markup_parser as markup_parser
 import lark
 from typing import Union
-
+from utils.testing import add_write_handler
 
 def entry_is_visible(entry):
     return entry.get("visas", True)
@@ -95,12 +95,13 @@ class TextId:
 @dataclass
 class IdLocation:
     entry: EntryDto
+    namespace: Namespace
     path: list[str]
     text: str
 
     @property
     def visible(self):
-        return is_visible(self.path, self.entry.entry)
+        return is_visible(self.path, self.entry.entry.get(namespace.path, {}))
 
 id_fields = {
     SO: {
@@ -168,7 +169,7 @@ def find_ids(entry):
         for field, kind in id_fields[namespace].items():
             for path in json.expand_path(field, sub_entry):
                 id = json.get_path(path, sub_entry)
-                yield Id(namespace, kind, id), IdLocation(entry, [namespace.path] + path, id)
+                yield Id(namespace, kind, id), IdLocation(entry, namespace, path, id)
 
         # skip variantformer
         if namespace == SAOL and "huvudlemma" in sub_entry and "huvudbetydelser" not in sub_entry:
@@ -178,7 +179,7 @@ def find_ids(entry):
         homografNr = sub_entry.get("homografNr")
 
         id = Id(namespace, TEXT, TextId(ortografi, homografNr))
-        yield id, IdLocation(entry, [namespace.path], id.format())
+        yield id, IdLocation(entry, namespace, [], id.format())
 
 
 def parse_ref(kind, ref):
@@ -258,7 +259,7 @@ def find_refs_in_namespace(entry, namespace):
         for path in json.expand_path(field, body):
             orig_ref = json.get_path(path, body)
             kind, ref = parse_ref(orig_kind, orig_ref)
-            yield Id(namespace, kind, ref), IdLocation(entry, [namespace.path] + path, orig_ref)
+            yield Id(namespace, kind, ref), IdLocation(entry, namespace, path, orig_ref)
 
     for path in json.all_paths(body):
         field = json.path_str(path, strip_positions=True)
@@ -273,7 +274,7 @@ def find_refs_in_namespace(entry, namespace):
         results = ref_regexp.findall(value)
         for orig_ref in results:
             kind, ref = parse_ref(None, orig_ref)
-            yield Id(namespace, kind, ref), IdLocation(entry, [namespace.path] + path, orig_ref)
+            yield Id(namespace, kind, ref), IdLocation(entry, namespace, path, orig_ref)
 
     for field in freetext_fields[namespace]:
         for path in json.expand_path(field, body):
@@ -282,7 +283,7 @@ def find_refs_in_namespace(entry, namespace):
                 tree = markup_parser.parse(value)
                 for text, ref in find_text_references(ortografi, homografNr, tree):
                     id = Id(namespace, TEXT, ref)
-                    yield id, IdLocation(entry, [namespace.path] + path, text)
+                    yield id, IdLocation(entry, namespace, path, text)
             except lark.LarkError:
                 pass # TODO: generate warning
 
@@ -300,3 +301,55 @@ def entry_name(entry, namespace):
         return ortografi
     else:
         return f'{homografNr} {ortografi}'
+
+
+# Output formats.
+
+@dataclass
+class _EntryLink:
+    entry: EntryDto
+    namespace: Namespace
+
+    def format(self, worksheet, row, col, cell_format):
+        url = f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&show=salex:{self.entry.id}&tab=edit"
+        name = entry_name(self.entry, self.namespace)
+
+        return worksheet.write_url(row, col, url, cell_format, name)
+
+@dataclass
+class _RichString:
+    parts: list
+
+    def format(self, worksheet, row, col, cell_format):
+        return worksheet.write_rich_string(row, col, *parts, cell_format)
+
+for cls in [_EntryLink, _RichString]:
+    add_write_handler(cls, lambda worksheet, row, col, val, cell_format=None: val.format(worksheet, row, col, cell_format))
+
+add_write_handler(
+    Namespace,
+    lambda worksheet, row, col, namespace, cell_format=None: worksheet.write_string(row, col, str(namespace), cell_format))
+
+add_write_handler(
+    Id,
+    lambda worksheet, row, col, id, cell_format=None: worksheet.write_string(row, col, id.format(), cell_format))
+
+def entry_cell(entry: EntryDto, namespace: Namespace):
+    return _EntryLink(entry=entry, namespace=namespace)
+
+def id_location_cell(id_location: IdLocation):
+    return _EntryLink(entry=id_location.entry, namespace=id_location.namespace)
+
+def rich_string_cell(*parts):
+    return RichString(parts=parts)
+
+@dataclass(frozen=True)
+class EntryWarning(Warning):
+    entry: EntryDto
+    namespace: Namespace
+
+    def to_dict(self):
+        return {
+            "Ord": entry_cell(self.entry, self.namespace),
+            "Ordbok": self.namespace
+        }

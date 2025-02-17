@@ -1,11 +1,11 @@
 from karp.foundation import json
 from collections import defaultdict
-from utils.salex import find_ids, find_refs, entry_name, is_visible, SO, SAOL, Id, IdLocation, parse_ref, TEXT, TextId, variant_fields
-from utils.testing import fields
+from utils.salex import find_ids, find_refs, entry_name, is_visible, SO, SAOL, Id, IdLocation, parse_ref, TEXT, TextId, variant_fields, EntryWarning, entry_cell
 from dataclasses import dataclass
 from tqdm import tqdm
 import re
 from karp.plugins.inflection_plugin import apply_rules
+from karp.lex.domain.dtos import EntryDto
 
 refid_re = re.compile(r"\+([^ +]*)\(refid=([a-zA-Z0-9]*)\)(?!\(refid=)")
 id_re = re.compile(r"(?:x|l|kc)nr[a-zA-Z0-9]+")
@@ -15,7 +15,29 @@ plus_re = re.compile(r"\+(?=\w)(?!verb)")
 def match_contains(m1, m2):
     return m1.start() <= m2.start() and m1.end() >= m2.end()
 
-@fields("ord", "fält", "hänvisning", "hänvisat ord", "feltyp")
+@dataclass(frozen=True)
+class DuplicateId(EntryWarning):
+    entry2: EntryDto
+    id: Id
+
+    def _is_missing_homografnr(self):
+        return self.id.type == TEXT and not self.id.id.homografNr
+
+    def category(self):
+        if self._is_missing_homografnr():
+            return f"Homografnummer saknas ({self.namespace})"
+        else:
+            return f"Duplicate id ({self.namespace})"
+
+    def to_dict(self):
+        result = {
+            "Ord": entry_cell(self.entry, self.namespace),
+            "Ord 2": entry_cell(self.entry2, self.namespace)
+        }
+        if not self._is_missing_homografnr():
+            result["Id"] = self.id
+        return result
+
 def test_references(entries, inflection_rules):
     ids = {}
     ids_without_homografNr = set()
@@ -34,7 +56,7 @@ def test_references(entries, inflection_rules):
         body2 = source2.entry.entry.get(ref.namespace.path)
         if body1 and not body2: return True
         if not body1: return False
-        return not body2.get("visas", True) # if neither are visas then pick arbitrarily
+        return not body2.get("visas", True) # if both are hidden pick arbitrarily
 
     for e in tqdm(entries, desc="Finding IDs"):
         for id, source in find_ids(e):
@@ -44,12 +66,12 @@ def test_references(entries, inflection_rules):
                 elif better(id, ids[id], source):
                     pass
                 else:
-                    message = "homografNr saknas" if id.type == TEXT else "duplikat id"
-                    yield warning(message, id, source)
+                    yield DuplicateId(namespace=id.namespace, entry=ids[id].entry, entry2=e, id=id)
 
             else:
                 ids[id] = source
 
+    return
     # Check for missing homografNr
     for id, source in ids.items():
         if id.type == TEXT:
