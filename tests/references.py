@@ -1,6 +1,6 @@
 from karp.foundation import json
 from collections import defaultdict
-from utils.salex import find_ids, find_refs, entry_name, is_visible, SO, SAOL, Id, IdLocation, parse_ref
+from utils.salex import find_ids, find_refs, entry_name, is_visible, SO, SAOL, Id, IdLocation, parse_ref, TEXT, TextId, variant_fields
 from utils.testing import fields
 from dataclasses import dataclass
 from tqdm import tqdm
@@ -18,6 +18,7 @@ def match_contains(m1, m2):
 @fields("ord", "fält", "hänvisning", "hänvisat ord", "feltyp")
 def test_references(entries, inflection_rules):
     ids = {}
+    ids_without_homografNr = set()
 
     def warning(kind, ref, loc):
         return {
@@ -28,18 +29,47 @@ def test_references(entries, inflection_rules):
             "feltyp": kind,
         }
 
+    def better(ref, source1, source2):
+        body1 = source1.entry.entry.get(ref.namespace.path)
+        body2 = source2.entry.entry.get(ref.namespace.path)
+        if body1 and not body2: return True
+        if not body1: return False
+        return body1.get("visas", True) and not body2.get("visas", True)
+
     for e in tqdm(entries, desc="Finding IDs"):
         for id, source in find_ids(e):
             if id in ids:
-                yield warning("duplikat id", id, source)
-            ids[id] = source
+                if better(id, source, ids[id]):
+                    ids[id] = source
+                elif better(id, ids[id], source):
+                    pass
+                else:
+                    message = "homografNr saknas" if id.type == TEXT else "duplikat id"
+                    yield warning(message, id, source)
+
+            else:
+                ids[id] = source
+
+    # Check for missing homografNr
+    for id, source in ids.items():
+        if id.type == TEXT:
+            if id.id.homografNr is not None:
+                banned_id = Id(id.namespace, id.type, TextId(id.id.ortografi, None))
+                if banned_id in ids:
+                    if source.entry.entry[id.namespace.path].get("visas", True) and \
+                        ids[banned_id].entry.entry[id.namespace.path].get("visas", True):
+                        yield warning("homografNr saknas", banned_id, ids[banned_id])
+                ids_without_homografNr.add(banned_id)
 
     for entry in tqdm(entries, desc="Checking references"):
         for ref, loc in find_refs(entry):
             if not loc.visible: continue
 
             if ref not in ids:
-                yield warning("hänvisat ord inte hittat", ref, loc)
+                if ref in ids_without_homografNr:
+                    yield warning("homografNr saknas i referens", ref, loc)
+                else:
+                    yield warning("hänvisat ord inte hittat", ref, loc)
 
             elif not ids[ref].visible:
                 yield warning("hänvisning till förrådat ord", ref, loc)
@@ -76,11 +106,20 @@ def test_references(entries, inflection_rules):
                     id = Id(namespace, kind, ref)
                     target_entry = ids[id].entry
                     target_word = target_entry.entry["ortografi"]
-                    if word != target_word:
-                        # Check all inflection rules
-                        inflection_class = target_entry.entry.get("böjningsklass")
-                        cases = inflection_rules.get(inflection_class, [])
-                        if word not in [apply_rules(target_word, case["rules"]) for case in cases]:
 
+                    if word == target_word: continue
+                    # Check to see if we find it in a variant form
+                    variant_forms = [
+                        json.get_path(path, body)
+                        for field in variant_fields[namespace]
+                        for path in json.expand_path(field, body)
+                    ]
+                    if word in variant_forms: continue
 
-                            yield warning("hänvisning pekar på oväntat ord", id, loc)
+                    # Check to see if we find it as an inflected form
+                    inflection_class = target_entry.entry.get("böjningsklass")
+                    cases = inflection_rules.get(inflection_class, [])
+                    if word not in [apply_rules(w, case["rules"]) for w in [target_word, *variant_forms] for case in cases]:
+                        # TODO: report mistakenly pointing at variant
+                        # form as a minor error?
+                        yield warning("hänvisning pekar på oväntat ord", id, loc)

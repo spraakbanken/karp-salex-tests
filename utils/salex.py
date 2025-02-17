@@ -6,6 +6,9 @@ from enum import Enum, global_enum
 from dataclasses import dataclass, field
 import re
 from karp.lex.domain.dtos import EntryDto
+import utils.markup_parser as markup_parser
+import lark
+from typing import Union
 
 
 def entry_is_visible(entry):
@@ -60,19 +63,33 @@ class IdType(Enum):
     XNR = 1
     KCNR = 2
     INR = 3
-    UNKNOWN = 4
-
-def format_ref(type, id):
-    return f"{str(type).lower()}{id}"
+    TEXT = 4
+    UNKNOWN = 5
 
 @dataclass(frozen=True)
 class Id:
     namespace: Namespace
     type: IdType
-    id: str
+    id: Union[str, "TextId"]
 
     def format(self):
-        return format_ref(self.type, self.id)
+        match self.type:
+            case IdType.LNR: return f"lnr{self.id}"
+            case IdType.XNR: return f"xnr{self.id}"
+            case IdType.KCNR: return f"inr{self.id}"
+            case IdType.INR: return f"(self.idiom) {id}"
+            case IdType.TEXT: return self.id.format()
+            case IdType.UNKNOWN: return f"(okänt format) {self.id}"
+
+@dataclass(frozen=True)
+class TextId:
+    ortografi: str
+    homografNr: int | None
+    # TODO also add lemmaNr: int | None for e.g. [i katt 1]
+    # Not included now because not sure how it works if some huvudbetydelser have visas=False
+
+    def format(self):
+        return " ".join(str(x) for x in [self.homografNr, self.ortografi] if x is not None)
 
 @dataclass
 class IdLocation:
@@ -119,14 +136,44 @@ ref_fields = {
     },
 }
 
+freetext_fields = {
+    SO: {
+        "huvudbetydelser.definition",
+        "huvudbetydelser.definitionstillägg",
+    },
+    SAOL: {
+        "huvudbetydelser.definition",
+        "sammansättningskommentar"
+    }
+}
+
+
+variant_fields = {
+    SO: {
+        "variantformer.ortografi",
+        "vnomen.ortografi",
+        "förkortningar.ortografi", # TODO some of these should be l_nr references
+    },
+    SAOL: {
+        "variantformer.ortografi",
+    },
+}
+
 
 def find_ids(entry):
     for namespace in id_fields:
-        sub_entry = entry.entry.get(namespace.path, {})
+        if namespace.path not in entry.entry: continue
+        sub_entry = entry.entry[namespace.path]
         for field, kind in id_fields[namespace].items():
             for path in json.expand_path(field, sub_entry):
                 id = json.get_path(path, sub_entry)
                 yield Id(namespace, kind, id), IdLocation(entry, [namespace.path] + path, id)
+
+        ortografi = entry.entry["ortografi"]
+        homografNr = sub_entry.get("homografNr")
+
+        id = Id(namespace, TEXT, TextId(ortografi, homografNr))
+        yield id, IdLocation(entry, [namespace.path], id.format())
 
 
 def parse_ref(kind, ref):
@@ -145,12 +192,58 @@ def parse_ref(kind, ref):
 
     return kind, ref
 
-
+text_xnr_regexp = re.compile(r"(.*)\s+([0-9]+)")
 ref_regexp = re.compile(r"(?<=refid=)[a-zA-Z0-9]*")
 
+def find_text_references(tree_ortografi, tree_homografNr, tree):
+    if isinstance(tree, str):
+        return
+
+    if isinstance(tree, list):
+        for subtree in tree:
+            yield from find_text_references(tree_ortografi, tree_homografNr, subtree)
+        return
+    
+    if tree.tag != "i":
+        yield from find_text_references(tree_ortografi, tree_homografNr, tree.contents)
+        return
+
+    items = markup_parser.to_markup(tree.contents).split(",")
+
+    for item in items:
+        items = item.strip()
+        if ref_regexp.search(item): continue
+        match markup_parser.parse(item):
+            case [markup_parser.Element("sup", sup_contents), *rest]:
+                homografNr = int(markup_parser.text_contents(sup_contents))
+                ortografi_xnr = markup_parser.text_contents(rest)
+            case _:
+                homografNr = None
+                ortografi_xnr = item
+
+        maybe_match = text_xnr_regexp.search(ortografi_xnr)
+        if maybe_match:
+            ortografi = maybe_match.group(1)
+            lemmaNr = maybe_match.group(2)
+        else:
+            ortografi = ortografi_xnr
+            lemmaNr = None
+
+        # special treatment of references to a prefix of the word
+        if ortografi.endswith("-") and tree_ortografi.startswith(ortografi[:-1]):
+            ortografi = tree_ortografi
+
+        # e.g. a reference [i katt] inside 1 katt refers to 1 katt
+        if homografNr is None and ortografi == tree_ortografi:
+            homografNr = tree_homografNr
+
+        yield markup_parser.to_markup(tree), TextId(ortografi, homografNr)
 
 def find_refs_in_namespace(entry, namespace):
+    ortografi = entry.entry["ortografi"]
     body = entry.entry.get(namespace.path, {})
+    homografNr = body.get("homografNr")
+
     for field, orig_kind in ref_fields[namespace].items():
         for path in json.expand_path(field, body):
             orig_ref = json.get_path(path, body)
@@ -171,6 +264,17 @@ def find_refs_in_namespace(entry, namespace):
         for orig_ref in results:
             kind, ref = parse_ref(None, orig_ref)
             yield Id(namespace, kind, ref), IdLocation(entry, [namespace.path] + path, orig_ref)
+
+    for field in freetext_fields[namespace]:
+        for path in json.expand_path(field, body):
+            value = json.get_path(path, body)
+            try:
+                tree = markup_parser.parse(value)
+                for text, ref in find_text_references(ortografi, homografNr, tree):
+                    id = Id(namespace, TEXT, ref)
+                    yield id, IdLocation(entry, [namespace.path] + path, text)
+            except lark.LarkError:
+                pass # TODO: generate warning
 
 
 def find_refs(entry):

@@ -88,3 +88,24 @@ def text_fragments(text: Union[str, "Markup"], tags=None) -> Iterator[Fragment]:
                 yield Fragment("", tags + [elt.tag])
             else:
                 yield from text_fragments(elt.contents, tags + [elt.tag])
+
+
+def text_contents(text: Union[str, "Markup"]) -> str:
+    """
+    Returns the text contained in a markup string or tree.
+    """
+
+    return "".join(fragment.text for fragment in text_fragments(text))
+
+def to_markup(text: Union[str, "Markup"]) -> str:
+    """
+    Convert a tree back to markup text.
+    """
+    if isinstance(text, str):
+        return text.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
+
+    elif isinstance(text, list):
+        return "".join(to_markup(elt) for elt in text)
+
+    else:
+        return f"[{text.tag} {to_markup(text.contents)}]"
