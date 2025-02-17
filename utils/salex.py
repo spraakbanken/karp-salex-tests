@@ -9,7 +9,7 @@ from karp.lex.domain.dtos import EntryDto
 import utils.markup_parser as markup_parser
 import lark
 from typing import Union
-from utils.testing import add_write_handler, add_write_via_handler
+from utils.testing import add_write_class, add_write_via_handler
 
 def entry_is_visible(entry):
     return entry.get("visas", True)
@@ -78,7 +78,7 @@ class Id:
             case IdType.LNR: return f"lnr{self.id}"
             case IdType.XNR: return f"xnr{self.id}"
             case IdType.KCNR: return f"inr{self.id}"
-            case IdType.INR: return f"(self.idiom) {id}"
+            case IdType.INR: return f"(idiom) {self.id}"
             case IdType.TEXT: return self.id.format()
             case IdType.UNKNOWN: return f"(okänt format) {self.id}"
 
@@ -136,6 +136,14 @@ ref_fields = {
         # "enbartDigitalaHänvisningar.hänvisning": None, this is in +refid(...) form
         # "huvudbetydelser.hänvisning": None, this is in +refid(...) form
     },
+}
+
+no_refid_fields = {
+    SO: {
+        "uttal.fonetikparentes",
+    },
+    SAOL: {
+    }
 }
 
 freetext_fields = {
@@ -310,22 +318,13 @@ class _EntryLink:
     entry: EntryDto
     namespace: Namespace
 
-    def write_cell(self, worksheet, row, col, cell_format):
+    def write_cell(self, worksheet, row, col, cell_format, **kwargs):
         url = f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&show=salex:{self.entry.id}&tab=edit"
         name = entry_name(self.entry, self.namespace)
 
         return worksheet.write_url(row, col, url, cell_format, name)
 
-@dataclass
-class _RichString:
-    parts: list
-
-    def write_cell(self, worksheet, row, col, cell_format):
-        return worksheet.write_rich_string(row, col, *parts, cell_format)
-
-for cls in [_EntryLink, _RichString]:
-    add_write_handler(cls, lambda worksheet, row, col, val, cell_format=None: val.write_cell(worksheet, row, col, cell_format))
-
+add_write_class(_EntryLink)
 add_write_via_handler(Namespace, str)
 add_write_via_handler(Id, lambda id: id.format())
 add_write_via_handler(IdLocation, lambda loc: _EntryLink(entry=loc.entry, namespace=loc.namespace))
@@ -335,9 +334,6 @@ def entry_cell(entry: EntryDto, namespace: Namespace):
 
 def id_location_cell(id_location: IdLocation):
     return _EntryLink(entry=id_location.entry, namespace=id_location.namespace)
-
-def rich_string_cell(*parts):
-    return RichString(parts=parts)
 
 @dataclass(frozen=True)
 class EntryWarning(Warning):
