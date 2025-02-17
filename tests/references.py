@@ -61,6 +61,18 @@ def test_references(entries, inflection_rules):
                         yield warning("homografNr saknas", banned_id, ids[banned_id])
                 ids_without_homografNr.add(banned_id)
 
+    # Check for unnecessary homografNr:
+    by_homografNr = defaultdict(set)
+    for id, source in ids.items():
+        if id.type == TEXT and id.id.homografNr is not None and source.entry.entry[id.namespace.path].get("visas", True):
+            by_homografNr[id.namespace, id.id.ortografi].add(id.id.homografNr)
+
+    for (namespace, ortografi), homografNrs in by_homografNr.items():
+        if len(homografNrs) == 1:
+            yield {"ord": ortografi, "fält": namespace, "hänvisning": "", "hänvisat ord": "", "feltyp": f"onödig homografNr {homografNrs}"}
+        elif list(sorted(homografNrs)) != list(range(1, len(homografNrs)+1)):
+            yield {"ord": ortografi, "fält": namespace, "hänvisning": "", "hänvisat ord": "", "feltyp": f"ogiltiga homografNr {homografNrs}"}
+
     for entry in tqdm(entries, desc="Checking references"):
         for ref, loc in find_refs(entry):
             if not loc.visible: continue
