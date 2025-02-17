@@ -20,80 +20,79 @@ class DuplicateId(EntryWarning):
     entry2: EntryDto
     id: Id
 
-    def _is_missing_homografnr(self):
-        return self.id.type == TEXT and not self.id.id.homografNr
-
     def category(self):
-        if self._is_missing_homografnr():
-            return f"Homografnummer saknas ({self.namespace})"
-        else:
-            return f"Duplicate id ({self.namespace})"
+        return f"Duplicate id ({self.namespace})"
 
     def to_dict(self):
-        result = {
+        return {
             "Ord": entry_cell(self.entry, self.namespace),
-            "Ord 2": entry_cell(self.entry2, self.namespace)
+            "Ord 2": entry_cell(self.entry2, self.namespace),
+            "Id": self.id
         }
-        if not self._is_missing_homografnr():
-            result["Id"] = self.id
+
+@dataclass(frozen=True)
+class HomografWrong(Warning):
+    namespace: str
+    ortografi: str
+    homografer: list[IdLocation]
+    message: str
+
+    def category(self):
+        return f"Felaktiga homografnummer ({self.namespace})"
+
+    def to_dict(self):
+        result = {"Ord": self.ortografi, "Fel": self.message}
+        for i, homograf in enumerate(self.homografer, start=1):
+            result[f"Homograf {i}"] = homograf
         return result
 
 def test_references(entries, inflection_rules):
     ids = {}
-    ids_without_homografNr = set()
+    by_ortografi: dict[tuple[Namespace, str], list[Id]] = defaultdict(list)
 
-    def warning(kind, ref, loc):
-        return {
-            "ord": entry_name(loc.entry, ref.namespace),
-            "fält": json.path_str(loc.path, strip_positions=True),
-            "hänvisning": loc.text,
-            "hänvisat ord": entry_name(ids[ref].entry, ref.namespace) if ref in ids else "?",
-            "feltyp": kind,
-        }
-
-    def better(ref, source1, source2):
-        body1 = source1.entry.entry.get(ref.namespace.path)
-        body2 = source2.entry.entry.get(ref.namespace.path)
-        if body1 and not body2: return True
-        if not body1: return False
-        return not body2.get("visas", True) # if both are hidden pick arbitrarily
-
+    # Read in all IDs and check for duplicates
     for e in tqdm(entries, desc="Finding IDs"):
         for id, source in find_ids(e):
             if id in ids:
-                if better(id, source, ids[id]):
+                if source.visible and not ids[id].visible:
                     ids[id] = source
-                elif better(id, ids[id], source):
+                elif not source.visible:
                     pass
-                else:
+                elif not (id.type == TEXT and id.id.homografNr is None): # missing homografNr are caught below
                     yield DuplicateId(namespace=id.namespace, entry=ids[id].entry, entry2=e, id=id)
 
             else:
                 ids[id] = source
 
+            # Populate index by ortografi/homografNr
+            if id.type == TEXT and source.visible:
+                by_ortografi[id.namespace, id.id.ortografi].append(id)
+
+    # Check for missing or unnecessary homografNr
+    for (namespace, ortografi), homograf_ids in by_ortografi.items():
+        def key(id):
+            hnr = id.id.homografNr
+            return -1 if hnr is None else hnr
+        homograf_ids = sorted(homograf_ids, key=key)
+
+        def homografer():
+            return [ids[id] for id in homograf_ids]
+
+        if len(homograf_ids) == 1 and homograf_ids[0].id.homografNr is not None: # unnecessary hnr
+            yield HomografWrong(namespace, ortografi, homografer(), "onödigt homografnummer")
+            continue
+
+        if any(id.id.homografNr is None for id in homograf_ids):
+            if len(homograf_ids) > 1: # missing hnr
+                yield HomografWrong(namespace, ortografi, homografer(), "homografnummer saknas")
+
+            homograf_ids = [id for id in homograf_ids if id.id.homografNr is not None]
+
+        homograf_nrs = [id.id.homografNr for id in homograf_ids]
+        if homograf_nrs != list(range(1, len(homograf_nrs)+1)): # wrong hnr
+            yield HomografWrong(namespace, ortografi, homografer(), "icke-sekventiella homografnummer")
+
     return
-    # Check for missing homografNr
-    for id, source in ids.items():
-        if id.type == TEXT:
-            if id.id.homografNr is not None:
-                banned_id = Id(id.namespace, id.type, TextId(id.id.ortografi, None))
-                if banned_id in ids:
-                    if source.entry.entry[id.namespace.path].get("visas", True) and \
-                        ids[banned_id].entry.entry[id.namespace.path].get("visas", True):
-                        yield warning("homografNr saknas", banned_id, ids[banned_id])
-                ids_without_homografNr.add(banned_id)
-
-    # Check for unnecessary homografNr:
-    by_homografNr = defaultdict(set)
-    for id, source in ids.items():
-        if id.type == TEXT and id.id.homografNr is not None and source.entry.entry[id.namespace.path].get("visas", True):
-            by_homografNr[id.namespace, id.id.ortografi].add(id.id.homografNr)
-
-    for (namespace, ortografi), homografNrs in by_homografNr.items():
-        if len(homografNrs) == 1:
-            yield {"ord": ortografi, "fält": str(namespace), "hänvisning": "", "hänvisat ord": "", "feltyp": f"onödig homografNr {homografNrs}"}
-        elif list(sorted(homografNrs)) != list(range(1, len(homografNrs)+1)):
-            yield {"ord": ortografi, "fält": str(namespace), "hänvisning": "", "hänvisat ord": "", "feltyp": f"ogiltiga homografNr {homografNrs}"}
 
     for entry in tqdm(entries, desc="Checking references"):
         for ref, loc in find_refs(entry):

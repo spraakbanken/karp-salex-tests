@@ -9,7 +9,7 @@ from karp.lex.domain.dtos import EntryDto
 import utils.markup_parser as markup_parser
 import lark
 from typing import Union
-from utils.testing import add_write_handler
+from utils.testing import add_write_handler, add_write_via_handler
 
 def entry_is_visible(entry):
     return entry.get("visas", True)
@@ -101,7 +101,7 @@ class IdLocation:
 
     @property
     def visible(self):
-        return is_visible(self.path, self.entry.entry.get(namespace.path, {}))
+        return is_visible(self.path, self.entry.entry.get(self.namespace.path, {}))
 
 id_fields = {
     SO: {
@@ -310,7 +310,7 @@ class _EntryLink:
     entry: EntryDto
     namespace: Namespace
 
-    def format(self, worksheet, row, col, cell_format):
+    def write_cell(self, worksheet, row, col, cell_format):
         url = f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&show=salex:{self.entry.id}&tab=edit"
         name = entry_name(self.entry, self.namespace)
 
@@ -320,19 +320,15 @@ class _EntryLink:
 class _RichString:
     parts: list
 
-    def format(self, worksheet, row, col, cell_format):
+    def write_cell(self, worksheet, row, col, cell_format):
         return worksheet.write_rich_string(row, col, *parts, cell_format)
 
 for cls in [_EntryLink, _RichString]:
-    add_write_handler(cls, lambda worksheet, row, col, val, cell_format=None: val.format(worksheet, row, col, cell_format))
+    add_write_handler(cls, lambda worksheet, row, col, val, cell_format=None: val.write_cell(worksheet, row, col, cell_format))
 
-add_write_handler(
-    Namespace,
-    lambda worksheet, row, col, namespace, cell_format=None: worksheet.write_string(row, col, str(namespace), cell_format))
-
-add_write_handler(
-    Id,
-    lambda worksheet, row, col, id, cell_format=None: worksheet.write_string(row, col, id.format(), cell_format))
+add_write_via_handler(Namespace, str)
+add_write_via_handler(Id, lambda id: id.format())
+add_write_via_handler(IdLocation, lambda loc: _EntryLink(entry=loc.entry, namespace=loc.namespace))
 
 def entry_cell(entry: EntryDto, namespace: Namespace):
     return _EntryLink(entry=entry, namespace=namespace)

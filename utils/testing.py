@@ -34,6 +34,13 @@ _write_handlers = []
 def add_write_handler(cls, handler):
     _write_handlers.append((cls, handler))
 
+def add_write_via_handler(cls, transform):
+    def handler(worksheet, row, col, val, cell_format=None):
+        new_val = transform(val)
+        assert type(new_val) is not type(val)
+        return worksheet.write(row, col, new_val, cell_format)
+    add_write_handler(cls, handler)
+
 def write_warnings(path, warnings):
     try:
         os.unlink(path)
@@ -61,9 +68,9 @@ def write_warnings(path, warnings):
             worksheet.write_row(0, 0, fields, bold)
 
             def write_warning(i, w):
-                worksheet.write_row(i+1, 0, (w.get(field) for field in fields))
+                worksheet.write_row(i, 0, (w.get(field) for field in fields))
 
-            for i, w in enumerate(ws):
+            for i, w in enumerate(ws, start=1):
                 write_warning(i, w)
 
             worksheet.autofit()
