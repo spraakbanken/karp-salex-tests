@@ -34,7 +34,7 @@ def test_references(entries, inflection_rules):
         body2 = source2.entry.entry.get(ref.namespace.path)
         if body1 and not body2: return True
         if not body1: return False
-        return body1.get("visas", True) and not body2.get("visas", True)
+        return not body2.get("visas", True) # if neither are visas then pick arbitrarily
 
     for e in tqdm(entries, desc="Finding IDs"):
         for id, source in find_ids(e):
@@ -100,19 +100,21 @@ def test_references(entries, inflection_rules):
 
                 # Check that target of reference is correct
                 for ref in references:
+                    loc = IdLocation(entry, [namespace.path] + path, ref.group(0))
                     word = ref.group(1).replace("_", " ")
                     target = ref.group(2)
                     kind, ref = parse_ref(None, target)
                     id = Id(namespace, kind, ref)
                     target_entry = ids[id].entry
                     target_word = target_entry.entry["ortografi"]
+                    target_body = target_entry.entry.get(namespace.path, {})
 
                     if word == target_word: continue
                     # Check to see if we find it in a variant form
                     variant_forms = [
-                        json.get_path(path, body)
+                        json.get_path(path, target_body)
                         for field in variant_fields[namespace]
-                        for path in json.expand_path(field, body)
+                        for path in json.expand_path(field, target_body)
                     ]
                     if word in variant_forms: continue
 

@@ -66,6 +66,7 @@ class IdType(Enum):
     TEXT = 4
     UNKNOWN = 5
 
+
 @dataclass(frozen=True)
 class Id:
     namespace: Namespace
@@ -169,6 +170,10 @@ def find_ids(entry):
                 id = json.get_path(path, sub_entry)
                 yield Id(namespace, kind, id), IdLocation(entry, [namespace.path] + path, id)
 
+        # skip variantformer
+        if namespace == SAOL and "huvudlemma" in sub_entry and "huvudbetydelser" not in sub_entry:
+            continue
+
         ortografi = entry.entry["ortografi"]
         homografNr = sub_entry.get("homografNr")
 
@@ -211,7 +216,8 @@ def find_text_references(tree_ortografi, tree_homografNr, tree):
     items = markup_parser.to_markup(tree.contents).split(",")
 
     for item in items:
-        items = item.strip()
+        item = item.strip()
+        if not item: continue
         if ref_regexp.search(item): continue
         match markup_parser.parse(item):
             case [markup_parser.Element("sup", sup_contents), *rest]:
@@ -229,9 +235,13 @@ def find_text_references(tree_ortografi, tree_homografNr, tree):
             ortografi = ortografi_xnr
             lemmaNr = None
 
-        # special treatment of references to a prefix of the word
-        if ortografi.endswith("-") and tree_ortografi.startswith(ortografi[:-1]):
-            ortografi = tree_ortografi
+        # skip discussion of prefixes
+        if ortografi.endswith("-") and not homografNr and not lemmaNr:
+            continue
+
+        # e.g. starr => [i grön s.]
+        if ortografi.endswith(" " + tree_ortografi[0] + "."):
+            continue
 
         # e.g. a reference [i katt] inside 1 katt refers to 1 katt
         if homografNr is None and ortografi == tree_ortografi:
