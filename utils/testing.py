@@ -12,12 +12,16 @@ from dataclasses import dataclass, field
 from functools import wraps, WRAPPER_ASSIGNMENTS, partial
 import xlsxwriter
 from xlsxwriter.format import Format
-import os
 from functools import lru_cache
 from collections import defaultdict
 from warnings import warn
+from pathlib import Path
+import re
 
-class Warning:
+class TestWarning:
+    def collection(self) -> str:
+        return "Testrapporter"
+
     @abstractmethod
     def category(self) -> str | None:
         raise NotImplementedError
@@ -73,49 +77,63 @@ def rich_string_cell(*parts):
     return _RichString(parts=parts)
 
 def highlight(part, text):
+    def find_next_match(part, text):
+        if part is None:
+            return None
+        elif isinstance(part, re.Pattern):
+            result = part.search(text)
+            if result: return result.start(), result.end()
+        elif isinstance(part, str):
+            result = text.find(part)
+            if result != -1: return result, result + len(part)
+        elif isinstance(part, list) or isinstance(part, set):
+            for subpart in part:
+                result = find_next_match(subpart, text)
+                if result is not None: return result
+        else:
+            assert False
+
     parts = []
     while True:
-        n = text.find(part)
-        if n == -1: break
-        parts.append(text[:n])
+        match = find_next_match(part, text)
+        if match is None: break
+        start, end = match
+        parts.append(text[:start])
         parts.append(BOLD)
-        parts.append(part)
-        text = text[n+len(part):]
+        parts.append(text[start:end])
+        text = text[end:]
     parts.append(text)
-    return parts
+    return rich_string_cell(*parts)
 
 def write_warnings(path, warnings):
-    try:
-        os.unlink(path)
-    except FileNotFoundError:
-        pass
-
-    by_worksheet = defaultdict(list)
+    by_workbook_and_worksheet = defaultdict(lambda: defaultdict(list))
     for w in warnings:
+        book = w.collection()
         sheet = w.category()
         if sheet is not None:
-            by_worksheet[sheet].append(w.to_dict())
+            by_workbook_and_worksheet[book][sheet].append(w.to_dict())
 
-    with xlsxwriter.Workbook(path) as workbook:
-        bold = workbook.add_format({'bold': True})
+    for bookname, by_worksheet in by_workbook_and_worksheet.items():
+        with xlsxwriter.Workbook(Path(path) / (bookname + ".xlsx")) as workbook:
+            bold = workbook.add_format({'bold': True})
 
-        for worksheet_name in sorted(by_worksheet.keys()):
-            ws = by_worksheet[worksheet_name]
-            fields = []
-            for w in ws:
-                fields += [f for f in w.keys() if f not in fields]
+            for worksheet_name in sorted(by_worksheet.keys()):
+                ws = by_worksheet[worksheet_name]
+                fields = []
+                for w in ws:
+                    fields += [f for f in w.keys() if f not in fields]
 
-            worksheet = workbook.add_worksheet(worksheet_name)
-            for cls, handler in _write_handlers:
-                worksheet.add_write_handler(cls, partial(handler, bold=bold))
+                worksheet = workbook.add_worksheet(worksheet_name)
+                for cls, handler in _write_handlers:
+                    worksheet.add_write_handler(cls, partial(handler, bold=bold))
 
-            worksheet.write_row(0, 0, fields, bold)
+                worksheet.write_row(0, 0, fields, bold)
 
-            def write_warning(i, w):
-                worksheet.write_row(i, 0, (w.get(field) for field in fields))
+                def write_warning(i, w):
+                    worksheet.write_row(i, 0, (w.get(field) for field in fields))
 
-            for i, w in enumerate(ws, start=1):
-                write_warning(i, w)
+                for i, w in enumerate(ws, start=1):
+                    write_warning(i, w)
 
-            worksheet.autofit()
+                worksheet.autofit()
 

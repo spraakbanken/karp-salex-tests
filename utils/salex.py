@@ -9,7 +9,7 @@ from karp.lex.domain.dtos import EntryDto
 import utils.markup_parser as markup_parser
 import lark
 from typing import Union
-from utils.testing import add_write_class, add_write_via_handler
+from utils.testing import add_write_class, add_write_via_handler, TestWarning, highlight
 
 def entry_is_visible(entry):
     return entry.get("visas", True)
@@ -35,7 +35,8 @@ def trim_invisible(data, test=entry_is_visible):
         if not json.has_path(path, data):
             continue  # already deleted
 
-        if not test(json.get_path(path, data)):
+        value = json.get_path(path, data)
+        if isinstance(value, dict) and not test(value):
             json.del_path(path, data)
 
 
@@ -303,7 +304,10 @@ def find_refs(entry):
 
 def entry_name(entry, namespace):
     ortografi = entry.entry["ortografi"]
-    homografNr = entry.entry.get(namespace.path, {}).get("homografNr")
+    if namespace is None:
+        homografNr = None
+    else:
+        homografNr = entry.entry.get(namespace.path, {}).get("homografNr")
 
     if homografNr is None:
         return ortografi
@@ -336,7 +340,7 @@ def id_location_cell(id_location: IdLocation):
     return _EntryLink(entry=id_location.entry, namespace=id_location.namespace)
 
 @dataclass(frozen=True)
-class EntryWarning(Warning):
+class EntryWarning(TestWarning):
     entry: EntryDto
     namespace: Namespace
 
@@ -345,3 +349,19 @@ class EntryWarning(Warning):
         if include_ordbok:
             result["Ordbok"] = self.namespace
         return result
+
+@dataclass(frozen=True)
+class FieldWarning(EntryWarning):
+    path: str | list[str]
+    highlight: str | None
+
+    def to_dict(self, **kwargs):
+        if self.namespace is None:
+            path = self.path
+        else:
+            path = [self.namespace.path] + json.make_path(path)
+
+        return super().to_dict(**kwargs) | {
+            "Fält": json.path_str(self.path, strip_positions=True),
+            "Text": highlight(self.highlight, json.get_path(path, self.entry.entry))
+        }

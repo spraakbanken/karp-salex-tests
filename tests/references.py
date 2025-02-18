@@ -1,7 +1,7 @@
 from karp.foundation import json
 from collections import defaultdict
-from utils.salex import find_ids, find_refs, entry_name, is_visible, SO, SAOL, Id, IdLocation, parse_ref, TEXT, TextId, variant_fields, EntryWarning, entry_cell, no_refid_fields, id_fields
-from utils.testing import highlight, rich_string_cell
+from utils.salex import find_ids, find_refs, entry_name, is_visible, SO, SAOL, Id, IdLocation, parse_ref, TEXT, TextId, variant_fields, TestWarning, entry_cell, no_refid_fields, id_fields
+from utils.testing import highlight
 from dataclasses import dataclass
 from tqdm import tqdm
 import re
@@ -16,7 +16,7 @@ def match_contains(m1, m2):
     return m1.start() <= m2.start() and m1.end() >= m2.end()
 
 @dataclass(frozen=True)
-class DuplicateId(Warning):
+class DuplicateId(TestWarning):
     entry: EntryDto
     entry2: EntryDto
     id: Id
@@ -32,7 +32,7 @@ class DuplicateId(Warning):
         }
 
 @dataclass(frozen=True)
-class HomografWrong(Warning):
+class HomografWrong(TestWarning):
     namespace: str
     ortografi: str
     homografer: list[IdLocation]
@@ -48,7 +48,7 @@ class HomografWrong(Warning):
         return result
 
 @dataclass(frozen=True)
-class BadReference(Warning):
+class BadReference(TestWarning):
     location: IdLocation
     reference: Id
     target: IdLocation | None
@@ -82,7 +82,7 @@ class BadReference(Warning):
         return result
 
 @dataclass(frozen=True)
-class BadReferenceSyntax(Warning):
+class BadReferenceSyntax(TestWarning):
     location: IdLocation
     text: str
 
@@ -93,7 +93,7 @@ class BadReferenceSyntax(Warning):
         result = {
             "Ord": self.location,
             "Fält": json.path_str(self.location.path, strip_positions=True),
-            "Hänvisning": rich_string_cell(*highlight(self.text, self.location.text))
+            "Hänvisning": highlight(self.text, self.location.text)
         }
         return result
 
