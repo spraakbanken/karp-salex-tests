@@ -60,10 +60,7 @@ class BadReference(Warning):
             return
 
         if self.target is not None:
-            if self.target.visible:
-                result = f"Kanske felpekande ({self.reference.namespace})"
-            else:
-                result = f"Hänvisningar till förråd ({self.reference.namespace})"
+            result = f"Felaktiga hänvisningar ({self.reference.namespace})"
         else:
             result = f"Okända hänvisningar ({self.reference.namespace})"
 
@@ -74,7 +71,7 @@ class BadReference(Warning):
             "Ord": self.location,
             "Fält": json.path_str(self.location.path, strip_positions=True),
         }
-        if self.target is not None and self.target.visible:
+        if self.target is not None and self.target.visible: # hack: must be pointing to the wrong thing, show full details
             result["Hänvisning"] = self.location.text
         else:
             result["Hänvisning"] = self.reference
@@ -153,6 +150,8 @@ def test_references(entries, inflection):
             if ref not in ids or not ids[ref].visible:
                 if ref not in ids and ref.type == TEXT and ref.id.homografNr is None and (ref.namespace, ref.id.ortografi) in by_ortografi:
                     comment = "homografnummer saknas?"
+                elif ref in ids and not ids[ref].visible:
+                    comment = "pekar på ett förrådat ord"
                 else:
                     comment = None
                 yield BadReference(loc, ref, ids.get(ref), comment)
