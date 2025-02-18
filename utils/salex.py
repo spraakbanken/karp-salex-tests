@@ -61,11 +61,12 @@ class Namespace(Enum):
 @global_enum
 class IdType(Enum):
     LNR = 0
-    XNR = 1
-    KCNR = 2
-    INR = 3
-    TEXT = 4
-    UNKNOWN = 5
+    VARIANT_LNR = 1
+    XNR = 2
+    KCNR = 3
+    INR = 4
+    TEXT = 5
+    UNKNOWN = 6
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,7 @@ class Id:
     def format(self):
         match self.type:
             case IdType.LNR: return f"lnr{self.id}"
+            case IdType.VARIANT_LNR: return f"lnr{self.id}"
             case IdType.XNR: return f"xnr{self.id}"
             case IdType.KCNR: return f"inr{self.id}"
             case IdType.INR: return f"(idiom) {self.id}"
@@ -121,6 +123,7 @@ id_fields = {
     SAOL: {
         "id": LNR,
         "huvudbetydelser.id": XNR,
+        "variantformer.id": VARIANT_LNR,
     },
 }
 
@@ -137,7 +140,7 @@ ref_fields = {
     },
     SAOL: {
         "moderverb": LNR,
-        "variantformer.id": LNR,
+        #"variantformer.id": LNR,
         # "enbartDigitalaHänvisningar.hänvisning": None, this is in +refid(...) form
         # "huvudbetydelser.hänvisning": None, this is in +refid(...) form
     },
@@ -179,23 +182,25 @@ def find_ids(entry):
     for namespace in id_fields:
         if namespace.path not in entry.entry: continue
         sub_entry = entry.entry[namespace.path]
+
         for field, kind in id_fields[namespace].items():
             for path in json.expand_path(field, sub_entry):
-                id = json.get_path(path, sub_entry)
-                yield Id(namespace, kind, id), IdLocation(entry, namespace, path, id)
+                value = json.get_path(path, sub_entry)
+                yield Id(namespace, kind, value), IdLocation(entry, namespace, path, value)
 
-        # skip variantformer
-        if namespace == SAOL and "huvudlemma" in sub_entry and "huvudbetydelser" not in sub_entry:
-            continue
+        # Variants do not generate a TEXT reference because they
+        # are not supposed to have a homografNr
+        # (checked in test_variantformer)
+        variant = namespace == SAOL and entry.entry.get("ingångstyp") == "variant"
+        if not variant:
+            ortografi = entry.entry["ortografi"]
+            homografNr = sub_entry.get("homografNr")
 
-        ortografi = entry.entry["ortografi"]
-        homografNr = sub_entry.get("homografNr")
-
-        id = Id(namespace, TEXT, TextId(ortografi, homografNr))
-        yield id, IdLocation(entry, namespace, [], id.format())
+            id = Id(namespace, TEXT, TextId(ortografi, homografNr))
+            yield id, IdLocation(entry, namespace, [], id.format())
 
 
-def parse_ref(kind, ref):
+def parse_refid(kind, ref):
     if kind is None:
         if ref.startswith("lnr"):
             ref = ref[3:]
@@ -213,6 +218,17 @@ def parse_ref(kind, ref):
 
 text_xnr_regexp = re.compile(r"(.*)\s+([0-9]+)")
 ref_regexp = re.compile(r"(?<=refid=)[a-zA-Z0-9]*")
+full_ref_regexp = re.compile(r"\+\w+\(refid=([a-zA-Z0-9]*)\)")
+
+def parse_ref(entry, namespace, path, text):
+    value = json.get_path(path, entry.get(namespace.path, {}))
+
+    match = full_ref_regexp.fullmatch(value)
+    if match is None: return None
+
+    kind, ref = parse_refid(None, match.group(0))
+    return Id(namespace, kind, ref), IdLocation(entry, namespace, path, orig_ref)
+
 
 def find_text_references(tree_ortografi, tree_homografNr, tree):
     if isinstance(tree, str):
@@ -271,7 +287,7 @@ def find_refs_in_namespace(entry, namespace):
     for field, orig_kind in ref_fields[namespace].items():
         for path in json.expand_path(field, body):
             orig_ref = json.get_path(path, body)
-            kind, ref = parse_ref(orig_kind, orig_ref)
+            kind, ref = parse_refid(orig_kind, orig_ref)
             yield Id(namespace, kind, ref), IdLocation(entry, namespace, path, orig_ref)
 
     for path in json.all_paths(body):
@@ -286,7 +302,7 @@ def find_refs_in_namespace(entry, namespace):
 
         results = ref_regexp.findall(value)
         for orig_ref in results:
-            kind, ref = parse_ref(None, orig_ref)
+            kind, ref = parse_refid(None, orig_ref)
             yield Id(namespace, kind, ref), IdLocation(entry, namespace, path, orig_ref)
 
     for field in freetext_fields[namespace]:
@@ -339,9 +355,6 @@ add_write_via_handler(IdLocation, lambda loc: _EntryLink(entry=loc.entry, namesp
 
 def entry_cell(entry: EntryDto, namespace: Namespace):
     return _EntryLink(entry=entry, namespace=namespace)
-
-def id_location_cell(id_location: IdLocation):
-    return _EntryLink(entry=id_location.entry, namespace=id_location.namespace)
 
 @dataclass(frozen=True)
 class EntryWarning(TestWarning):

@@ -1,6 +1,6 @@
 from karp.foundation import json
 from collections import defaultdict
-from utils.salex import find_ids, find_refs, entry_name, is_visible, SO, SAOL, Id, IdLocation, parse_ref, TEXT, TextId, variant_fields, TestWarning, entry_cell, no_refid_fields, id_fields
+from utils.salex import find_ids, find_refs, entry_name, is_visible, SO, SAOL, Id, IdLocation, parse_refid, TEXT, TextId, variant_fields, TestWarning, entry_cell, no_refid_fields, id_fields
 from utils.testing import highlight
 from dataclasses import dataclass
 from tqdm import tqdm
@@ -22,7 +22,7 @@ class DuplicateId(TestWarning):
     id: Id
 
     def category(self):
-        return f"Duplicate id ({self.id.namespace})"
+        return f"Duplicat id ({self.id.namespace})"
 
     def to_dict(self):
         return {
@@ -104,8 +104,8 @@ class BadReferenceSyntax(TestWarning):
     def sort_key(self):
         return (self.location.field, self.location.entry.entry["ortografi"], entry_name(self.entry, self.location.namespace))
 
-def test_references(entries, inflection):
-    ids = {}
+def test_references(entries, inflection, ids=None):
+    if ids is None: ids={}
     by_ortografi: dict[tuple[Namespace, str], list[Id]] = defaultdict(list)
 
     # Read in all IDs and check for duplicates
@@ -117,7 +117,7 @@ def test_references(entries, inflection):
                 elif not source.visible:
                     pass
                 elif not (id.type == TEXT and id.id.homografNr is None): # missing homografNr are caught below
-                    yield DuplicateId(namespace=id.namespace, entry=ids[id].entry, entry2=e, id=id)
+                    yield DuplicateId(entry=ids[id].entry, entry2=e, id=id)
 
             else:
                 ids[id] = source
@@ -196,7 +196,7 @@ def test_references(entries, inflection):
                     loc = IdLocation(entry, namespace, path, ref.group(0))
                     word = ref.group(1).replace("_", " ").replace("(", "").replace(")", "")
                     target = ref.group(2)
-                    kind, ref = parse_ref(None, target)
+                    kind, ref = parse_refid(None, target)
                     id = Id(namespace, kind, ref)
                     if id not in ids: continue
                     target_entry = ids[id].entry
