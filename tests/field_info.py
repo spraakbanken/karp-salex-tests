@@ -95,7 +95,7 @@ def test_field_info(resource_config, entries):
         yield FieldStatistics("Always present", s)
 
     for s in usually_present:
-        yield FieldStatistics("Usally present", s)
+        yield FieldStatistics("Usually present", s)
 
     for s in usually_absent:
         yield FieldStatistics("Usually absent", s)
