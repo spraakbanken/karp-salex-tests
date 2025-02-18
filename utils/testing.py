@@ -30,6 +30,10 @@ class TestWarning:
     def to_dict(self) -> dict[str, object]:
         raise NotImplementedError
 
+    @abstractmethod
+    def sort_key(self) -> tuple[str, ...]:
+        return ()
+
 
 def diff_warnings(tester, w1, w2):
     identifiers = {tester.info.identifier(w) for w in w2}
@@ -112,7 +116,7 @@ def write_warnings(path, warnings):
         book = w.collection()
         sheet = w.category()
         if sheet is not None:
-            by_workbook_and_worksheet[book][sheet].append(w.to_dict())
+            by_workbook_and_worksheet[book][sheet].append(w)
 
     for bookname, by_worksheet in by_workbook_and_worksheet.items():
         with xlsxwriter.Workbook(Path(path) / (bookname + ".xlsx")) as workbook:
@@ -120,6 +124,9 @@ def write_warnings(path, warnings):
 
             for worksheet_name in sorted(by_worksheet.keys()):
                 ws = by_worksheet[worksheet_name]
+                ws.sort(key=lambda w: (type(w).__name__, w.sort_key()))
+                ws = [w.to_dict() for w in ws]
+
                 fields = []
                 for w in ws:
                     fields += [f for f in w.keys() if f not in fields]

@@ -75,6 +75,9 @@ class FieldStatistics(TestWarning):
     _category: str
     statistics: Statistics
 
+    def collection(self):
+        return "Fältstatistik"
+
     def category(self):
         return self._category
 

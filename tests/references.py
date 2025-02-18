@@ -69,7 +69,7 @@ class BadReference(TestWarning):
     def to_dict(self):
         result = {
             "Ord": self.location,
-            "Fält": json.path_str(self.location.path, strip_positions=True),
+            "Fält": self.location.field,
         }
         if self.target is not None and self.target.visible: # hack: must be pointing to the wrong thing, show full details
             result["Hänvisning"] = self.location.text
@@ -81,8 +81,12 @@ class BadReference(TestWarning):
             result["Kommentar"] = self.comment
         return result
 
+    def sort_key(self):
+        return (self.location.field, self.location.entry.entry["ortografi"], entry_name(self.location.entry, self.location.namespace))
+
 @dataclass(frozen=True)
 class BadReferenceSyntax(TestWarning):
+    entry: EntryDto
     location: IdLocation
     text: str
 
@@ -96,6 +100,9 @@ class BadReferenceSyntax(TestWarning):
             "Hänvisning": highlight(self.text, self.location.text)
         }
         return result
+
+    def sort_key(self):
+        return (self.location.field, self.location.entry.entry["ortografi"], entry_name(self.entry, self.location.namespace))
 
 def test_references(entries, inflection):
     ids = {}
@@ -137,7 +144,7 @@ def test_references(entries, inflection):
             if len(homograf_ids) > 1: # missing hnr
                 yield HomografWrong(namespace, ortografi, homografer(), "homografnummer saknas")
 
-            homograf_ids = [id for id in homograf_ids if id.id.homografNr is not None]
+            continue
 
         homograf_nrs = [id.id.homografNr for id in homograf_ids]
         if homograf_nrs != list(range(1, len(homograf_nrs)+1)): # wrong hnr
@@ -178,7 +185,7 @@ def test_references(entries, inflection):
                 for regexp in tests:
                     for maybe_ref in regexp.finditer(value):
                         if not any(match_contains(ref, maybe_ref) for ref in references):
-                            errors.append(BadReferenceSyntax(loc, maybe_ref.group(0)))
+                            errors.append(BadReferenceSyntax(entry, loc, maybe_ref.group(0)))
 
                 # Only generate one error per string, since bad references tend
                 # to trigger more than one of the regexp tests
@@ -191,6 +198,7 @@ def test_references(entries, inflection):
                     target = ref.group(2)
                     kind, ref = parse_ref(None, target)
                     id = Id(namespace, kind, ref)
+                    if id not in ids: continue
                     target_entry = ids[id].entry
                     target_word = target_entry.entry["ortografi"]
                     target_body = target_entry.entry.get(namespace.path, {})

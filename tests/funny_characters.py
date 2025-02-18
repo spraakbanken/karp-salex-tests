@@ -21,7 +21,7 @@ class CharacterCount(TestWarning):
     count: int
 
     def collection(self):
-        return "Teckeninfo"
+        return "Teckenstatistik"
 
     def category(self):
         return "Teckenstatistik"
@@ -37,7 +37,7 @@ class FunnyCharacter(FieldWarning):
     funny_characters: list[str]
 
     def collection(self):
-        return "Teckeninfo"
+        return "Teckenstatistik"
 
     def category(self):
         return "Ovanliga tecken"

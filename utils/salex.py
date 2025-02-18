@@ -104,6 +104,10 @@ class IdLocation:
     def visible(self):
         return is_visible(self.path, self.entry.entry.get(self.namespace.path, {}))
 
+    @property
+    def field(self):
+        return json.path_str(self.path, strip_positions=True)
+
 id_fields = {
     SO: {
         "l_nr": LNR,

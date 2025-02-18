@@ -10,7 +10,7 @@ class MismatchedBrackets(FieldWarning):
     comment: str | None = None
 
     def category(self):
-        return "Obalanserade parenteser osv"
+        return "Parenteser och citeringstecken"
 
     def to_dict(self):
         result = super().to_dict()
