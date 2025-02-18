@@ -87,9 +87,10 @@ def highlight(part, text):
             result = text.find(part)
             if result != -1: return result, result + len(part)
         elif isinstance(part, list) or isinstance(part, set):
-            for subpart in part:
-                result = find_next_match(subpart, text)
-                if result is not None: return result
+            matches = [find_next_match(subpart, text) for subpart in part]
+            matches = [m for m in matches if m is not None]
+            if matches:
+                return min(matches)
         else:
             assert False
 

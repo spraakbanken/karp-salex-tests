@@ -344,9 +344,9 @@ class EntryWarning(TestWarning):
     entry: EntryDto
     namespace: Namespace
 
-    def to_dict(self, include_ordbok=False):
+    def to_dict(self, include_ordbok=True):
         result = {"Ord": entry_cell(self.entry, self.namespace)}
-        if include_ordbok:
+        if include_ordbok and self.namespace is not None:
             result["Ordbok"] = self.namespace
         return result
 
@@ -359,7 +359,7 @@ class FieldWarning(EntryWarning):
         if self.namespace is None:
             path = self.path
         else:
-            path = [self.namespace.path] + json.make_path(path)
+            path = [self.namespace.path] + json.make_path(self.path)
 
         return super().to_dict(**kwargs) | {
             "Fält": json.path_str(self.path, strip_positions=True),

@@ -48,7 +48,7 @@ class FunnyCharacter(FieldWarning):
             "Tecken": highlight(self.funny_characters, info)
         }
 
-whitelist_str = '" :,[].=_()·~+|-;`´\'/\\–!∫?%®\xa0\n〈〉\xad&'
+whitelist_str = '" :,[].=_()·~+|-;`´\'/\\–!∫?%®\xa0\n〈〉\xad&¦'
 whitelist = set(x for x in whitelist_str)
 
 html_entity_re = re.compile(r"&#?\w+;")
