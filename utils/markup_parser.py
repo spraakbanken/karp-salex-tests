@@ -1,6 +1,6 @@
 """A parser for the [b markup format] used in [i Salex]."""
 
-from lark import Lark, Transformer
+from lark import Lark, Transformer, LarkError
 from typing import Union, Iterator
 from dataclasses import dataclass
 
@@ -109,3 +109,13 @@ def to_markup(text: Union[str, "Markup"]) -> str:
 
     else:
         return f"[{text.tag} {to_markup(text.contents)}]"
+
+def strip_markup(text: Union[str, "Markup"]) -> str:
+    """
+    Strip all markup from a markup string, returning plain text.
+    """
+    try:
+        tree = parser.parse(text)
+        return text_contents(tree)
+    except LarkError:
+        return text
