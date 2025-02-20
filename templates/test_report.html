@@ -11,8 +11,15 @@
 <body>
     <h1>{{ title }}</h1>
 
+    <ol>
+    {% for title in test_reports %}
+    <li><a href="#test{{loop.index}}">{{title}}</a>
+    {% endfor %}
+    </il>
+
     {% for title, test_report in test_reports.items() %}
-    <h2>{{ title }}</h2>
+    <a name="test{{loop.index}}">
+    <h2>{{loop.index}}. {{ title }}</h2>
     <table id="table{{loop.index}}">
         <thead>
             {% for field in test_report.fields %}
