@@ -18,6 +18,8 @@ from pathlib import Path
 import re
 from utils import markup_parser
 import lark
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+import html
 
 class TestWarning:
     def collection(self) -> str:
@@ -40,19 +42,31 @@ def diff_warnings(tester, w1, w2):
     identifiers = {tester.info.identifier(w) for w in w2}
     return [w for w in w1 if tester.info.identifier(w) not in identifiers]
 
-_write_handlers = []
-def add_write_handler(cls, handler):
-    _write_handlers.append((cls, handler))
+_write_classes = set()
+_write_vias = {}
+
+def _add_write_handlers(worksheet, **kwargs):
+    for cls in _write_classes:
+        worksheet.add_write_handler(cls, lambda worksheet, row, col, val, cell_format=None: val.write_cell(worksheet, row, col, cell_format, **kwargs))
+
+    for cls, transform in _write_vias.items():
+        def handler(worksheet, row, col, val, cell_format=None, transform=None):
+            new_val = transform(val)
+            assert type(new_val) is not type(val)
+            return worksheet.write(row, col, new_val, cell_format)
+
+        worksheet.add_write_handler(cls, partial(handler, transform=transform))
 
 def add_write_via_handler(cls, transform):
-    def handler(worksheet, row, col, val, cell_format=None, **kwargs):
-        new_val = transform(val)
-        assert type(new_val) is not type(val)
-        return worksheet.write(row, col, new_val, cell_format)
-    add_write_handler(cls, handler)
+    _write_vias[cls] = transform
 
 def add_write_class(cls):
-    add_write_handler(cls, lambda worksheet, row, col, val, cell_format=None, **kwargs: val.write_cell(worksheet, row, col, cell_format, **kwargs))
+    _write_classes.add(cls)
+
+add_write_via_handler(type(None), lambda x: "")
+add_write_via_handler(bool, lambda x: "ja" if x else "nej")
+add_write_via_handler(int, str)
+add_write_via_handler(bool, str)
 
 @dataclass(frozen=True)
 class Style:
@@ -62,6 +76,25 @@ class Style:
     small: bool = False
     subscript: bool = False
     superscript: bool = False
+
+def style_to_html(style, end=False):
+    tags = []
+    if style.bold: tags.append("b")
+    if style.underline: tags.append("u")
+    if style.italic: tags.append("i")
+    if style.small: tags.append("small")
+    if style.subscript: tags.append("sub")
+    if style.subscript: tags.append("sup")
+
+    result = []
+    if end:
+        for tag in reversed(tags):
+            result.append(f"</{tag}>")
+    else:
+        for tag in tags:
+            result.append(f"<{tag}>")
+
+    return "".join(result)
 
 BOLD = Style(bold=True)
 
@@ -78,7 +111,7 @@ class _RichString:
         while i < len(self.parts):
             if self.parts[i] == "":
                 i += 1
-            elif isinstance(self.parts[i], Format) and i+1 < len(self.parts) and self.parts[i+1] == "":
+            elif isinstance(self.parts[i], Style) and i+1 < len(self.parts) and self.parts[i+1] == "":
                 i += 2
             else:
                 part = self.parts[i]
@@ -94,6 +127,24 @@ class _RichString:
             return worksheet.write_string(row, col, parts[1], cell_format=parts[0])
 
         return worksheet.write_rich_string(row, col, *parts)
+
+    def render_html(self):
+        result = []
+        i = 0
+        while i < len(self.parts):
+            if isinstance(self.parts[i], Style) and i+1 < len(self.parts):
+                style = self.parts[i]
+                result += style_to_html(style, end=False)
+                result.append(render_html(self.parts[i+1]))
+                result += style_to_html(style, end=True)
+                i += 2
+            elif isinstance(self.parts[i], Style):
+                i += 1
+            else:
+                result += render_html(self.parts[i])
+                i += 1
+
+        return "".join(result)
 
 add_write_class(_RichString)
 
@@ -156,6 +207,23 @@ def markup_cell(markup):
 
     return rich_string_cell(*parts)
 
+@dataclass
+class _Link:
+    text: object
+    url: str
+
+    def write_cell(self, worksheet, row, col, cell_format, **kwargs):
+        return worksheet.write_url(row, col, self.url, cell_format, self.text)
+
+    def render_html(self):
+        return f'<a href="{html.escape(self.url)}">{render_html(self.text)}</a>'
+
+add_write_class(_Link)
+
+def link_cell(text, url):
+    return _Link(text, url)
+
+
 def make_styler(workbook):
     styles = {
         "bold": {"bold": True},
@@ -178,7 +246,7 @@ def make_styler(workbook):
 @dataclass
 class TestReport:
     fields: list[str]
-    values: list[list[object]]
+    rows: list[list[object]]
 
 def make_test_report(warnings) -> TestReport:
     warnings.sort(key=lambda w: (type(w).__name__, w.sort_key()))
@@ -188,11 +256,11 @@ def make_test_report(warnings) -> TestReport:
     for w in warnings:
         fields += [f for f in w.keys() if f not in fields]
 
-    values = []
+    rows = []
     for w in warnings:
-        values.append([w.get(field) for field in fields])
+        rows.append([w.get(field) for field in fields])
 
-    return TestReport(fields=fields, values=values)
+    return TestReport(fields=fields, rows=rows)
 
 
 def make_test_reports(warnings) -> dict[str, dict[str, TestReport]]:
@@ -215,19 +283,45 @@ def make_test_reports(warnings) -> dict[str, dict[str, TestReport]]:
         for collection, by_category in sorted_dict(by_collection_and_category).items()
     }
 
-def write_test_reports(path, test_reports):
+def write_test_reports_excel(path, test_reports):
     for bookname, by_worksheet in test_reports.items():
         with xlsxwriter.Workbook(Path(path) / (bookname + ".xlsx")) as workbook:
             style = make_styler(workbook)
 
             for worksheet_name, report in by_worksheet.items():
                 worksheet = workbook.add_worksheet(worksheet_name)
-                for cls, handler in _write_handlers:
-                    worksheet.add_write_handler(cls, partial(handler, style=style))
+                _add_write_handlers(worksheet, style=style)
 
                 worksheet.write_row(0, 0, report.fields, style(bold=True))
 
-                for i, w in enumerate(report.values, start=1):
+                for i, w in enumerate(report.rows, start=1):
                     worksheet.write_row(i, 0, w)
 
                 worksheet.autofit()
+
+# TODO: use PackageLoader instead
+template_path = Path(__file__).parent.parent / "templates"
+jinja_env = Environment(
+    loader = FileSystemLoader(template_path),
+    autoescape = select_autoescape()
+)
+
+def render_html(value):
+    if isinstance(value, str):
+        return html.escape(value)
+    elif type(value) in _write_vias:
+        return render_html(_write_vias[type(value)](value))
+    elif type(value) in _write_classes:
+        return value.render_html()
+    else:
+        return render_html(str(value))
+
+def write_test_reports_html(path, test_reports):
+    for title, by_table in test_reports.items():
+        template = jinja_env.get_template("test_report.html")
+
+        for test_report in by_table.values():
+            test_report.rows = [[render_html(cell) for cell in row] for row in test_report.rows]
+
+        with open(Path(path) / (title + ".html"), "w") as out_file:
+            out_file.write(template.render(title=title, test_reports = by_table))

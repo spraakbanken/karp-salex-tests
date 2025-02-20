@@ -1,4 +1,4 @@
-from utils.testing import write_test_reports, make_test_reports
+from utils.testing import write_test_reports_excel, write_test_reports_html, make_test_reports
 from tests.ordled_agreement import test_ordled_agreement
 from tests.references import test_references
 from tests.funny_characters import test_funny_characters
@@ -33,4 +33,6 @@ warnings += test_field_info(resource_config, entries)
 warnings += test_ordled_agreement(entries)
 warnings += test_funny_characters(entries)
 warnings += test_mismatched_brackets_etc(entries)
-write_test_reports("results", make_test_reports(warnings))
+test_reports = make_test_reports(warnings)
+write_test_reports_excel("results", test_reports)
+write_test_reports_html("results", test_reports)

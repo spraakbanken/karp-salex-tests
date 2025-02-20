@@ -9,7 +9,7 @@ from karp.lex.domain.dtos import EntryDto
 import utils.markup_parser as markup_parser
 import lark
 from typing import Union
-from utils.testing import add_write_class, add_write_via_handler, TestWarning, highlight
+from utils.testing import add_write_class, add_write_via_handler, TestWarning, highlight, link_cell
 
 def entry_is_visible(entry):
     return entry.get("visas", True)
@@ -337,24 +337,15 @@ def entry_name(entry, namespace):
 
 # Output formats.
 
-@dataclass
-class _EntryLink:
-    entry: EntryDto
-    namespace: Namespace
+def entry_cell(entry: EntryDto, namespace: Namespace):
+    url = f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&show=salex:{entry.id}&tab=edit"
+    name = entry_name(entry, namespace)
 
-    def write_cell(self, worksheet, row, col, cell_format, **kwargs):
-        url = f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&show=salex:{self.entry.id}&tab=edit"
-        name = entry_name(self.entry, self.namespace)
+    return link_cell(url=url, text=name)
 
-        return worksheet.write_url(row, col, url, cell_format, name)
-
-add_write_class(_EntryLink)
 add_write_via_handler(Namespace, str)
 add_write_via_handler(Id, lambda id: id.format())
-add_write_via_handler(IdLocation, lambda loc: _EntryLink(entry=loc.entry, namespace=loc.namespace))
-
-def entry_cell(entry: EntryDto, namespace: Namespace):
-    return _EntryLink(entry=entry, namespace=namespace)
+add_write_via_handler(IdLocation, lambda loc: entry_cell(entry=loc.entry, namespace=loc.namespace))
 
 @dataclass(frozen=True)
 class EntryWarning(TestWarning):

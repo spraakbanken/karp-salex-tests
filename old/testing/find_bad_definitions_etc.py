@@ -4,9 +4,9 @@ from nltk.tokenize import word_tokenize
 from enum import global_enum, Enum
 import re
 import sys
+from utils.salex import is_visible
 
 sys.path.append("/home/nick/prog/sb/karp-backend/repl_scripts/testing")
-from testing_utils import *
 
 
 @global_enum

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.css" />
+
+    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
+    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.js"></script>
+</head>
+
+<body>
+    <h1>{{ title }}</h1>
+
+    {% for title, test_report in test_reports.items() %}
+    <h2>{{ title }}</h2>
+    <table id="table{{loop.index}}">
+        <thead>
+            {% for field in test_report.fields %}
+            <th>{{ field }}</th>
+            {% endfor %}
+        </thead>
+        <tbody>
+            {% for row in test_report.rows %}
+            <tr>
+                {% for field in row %}
+                <td>{{ field|safe }}</td> {# not escaped as this is done in Python #}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <script>
+        let table{{loop.index}} = new DataTable('#table{{loop.index}}', {paging: false, info: false})
+    </script>
+    {% endfor %}
+</body>
+
+</html>
