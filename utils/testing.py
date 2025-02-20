@@ -8,15 +8,16 @@ from abc import abstractmethod
 import pydantic
 from typing import Iterator, Iterable, Self, Optional
 import csv
-from dataclasses import dataclass, field
-from functools import wraps, WRAPPER_ASSIGNMENTS, partial
+from dataclasses import dataclass, field, replace
+from functools import wraps, WRAPPER_ASSIGNMENTS, partial, lru_cache
 import xlsxwriter
 from xlsxwriter.format import Format
-from functools import lru_cache
 from collections import defaultdict
 from warnings import warn
 from pathlib import Path
 import re
+from utils import markup_parser
+import lark
 
 class TestWarning:
     def collection(self) -> str:
@@ -53,21 +54,40 @@ def add_write_via_handler(cls, transform):
 def add_write_class(cls):
     add_write_handler(cls, lambda worksheet, row, col, val, cell_format=None, **kwargs: val.write_cell(worksheet, row, col, cell_format, **kwargs))
 
-BOLD = object()
+@dataclass(frozen=True)
+class Style:
+    bold: bool = False
+    underline: bool = False
+    italic: bool = False
+    small: bool = False
+    subscript: bool = False
+    superscript: bool = False
+
+BOLD = Style(bold=True)
 
 @dataclass
 class _RichString:
     parts: list
 
-    def write_cell(self, worksheet, row, col, cell_format, bold, **kwargs):
-        self.parts = [part for part in self.parts if part != ""]
-
-        def _to_part(part):
-            if part is BOLD:
-                return bold
+    def write_cell(self, worksheet, row, col, cell_format, style, **kwargs):
+        parts = []
+        i = 0
+        # Drop empty text (which is not supported by xlsxwriter).
+        # We must also drop any formatting command that precedes empty text.
+        # Also convert Style objects to Excel formats.
+        while i < len(self.parts):
+            if self.parts[i] == "":
+                i += 1
+            elif isinstance(self.parts[i], Format) and i+1 < len(self.parts) and self.parts[i+1] == "":
+                i += 2
             else:
-                return part
-        parts = [_to_part(part) for part in self.parts]
+                part = self.parts[i]
+                if isinstance(part, Style):
+                    part = style(**part.__dict__)
+                parts.append(part)
+                i += 1
+
+        # Single strings are not supported by xlsxwriter.
         if len(parts) == 1:
             return worksheet.write_string(row, col, parts[0], cell_format)
         elif len(parts) == 2 and isinstance(parts[0], Format):
@@ -110,6 +130,51 @@ def highlight(part, text):
     parts.append(text)
     return rich_string_cell(*parts)
 
+def markup_cell(markup):
+    try:
+        tree = markup_parser.parse(markup)
+    except lark.LarkError:
+        return markup
+
+    parts = []
+    for fragment in markup_parser.text_fragments(markup):
+        style = Style()
+        for tag in fragment.tags:
+            match tag:
+                case "b": style = replace(style, bold=True)
+                case "i": style = replace(style, italic=True)
+                case "u": style = replace(style, underline=True)
+                case "caps": 
+                    fragment.text = fragment.text.upper()
+                    style = replace(style, small=True)
+                case "r": style = Style()
+                case "rp": style = Style(small=True)
+                case "sup": style = replace(style, superscript=True)
+                case "sub": style = replace(style, subscript=True)
+        parts.append(style)
+        parts.append(fragment.text)
+
+    return rich_string_cell(*parts)
+
+def make_styler(workbook):
+    styles = {
+        "bold": {"bold": True},
+        "underline": {"underline": True},
+        "italic": {"italic": True},
+        "small": {"font_size": 9},
+        "subscript": {"font_script": 2},
+        "superscript": {"font_script": 1},
+    }
+
+    @lru_cache(maxsize=None)
+    def make_format(**kwargs):
+        format = {}
+        for k, v in kwargs.items():
+            if v: format.update(styles[k])
+        return workbook.add_format(format)
+
+    return make_format
+
 def write_warnings(path, warnings):
     by_workbook_and_worksheet = defaultdict(lambda: defaultdict(list))
     for w in warnings:
@@ -120,7 +185,7 @@ def write_warnings(path, warnings):
 
     for bookname, by_worksheet in by_workbook_and_worksheet.items():
         with xlsxwriter.Workbook(Path(path) / (bookname + ".xlsx")) as workbook:
-            bold = workbook.add_format({'bold': True})
+            style = make_styler(workbook)
 
             for worksheet_name in sorted(by_worksheet.keys()):
                 ws = by_worksheet[worksheet_name]
@@ -133,9 +198,9 @@ def write_warnings(path, warnings):
 
                 worksheet = workbook.add_worksheet(worksheet_name)
                 for cls, handler in _write_handlers:
-                    worksheet.add_write_handler(cls, partial(handler, bold=bold))
+                    worksheet.add_write_handler(cls, partial(handler, style=style))
 
-                worksheet.write_row(0, 0, fields, bold)
+                worksheet.write_row(0, 0, fields, style(bold=True))
 
                 def write_warning(i, w):
                     worksheet.write_row(i, 0, (w.get(field) for field in fields))

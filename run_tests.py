@@ -3,6 +3,7 @@ from tests.ordled_agreement import test_ordled_agreement
 from tests.references import test_references
 from tests.funny_characters import test_funny_characters
 from tests.mismatched_brackets_etc import test_mismatched_brackets_etc
+from tests.suspicious_böjningar import test_böjningar
 from tests.field_info import test_field_info
 from tests.efterled import test_efterled
 from tqdm import tqdm
@@ -25,8 +26,9 @@ entries_by_id = {entry.id: entry for entry in entries}
 ids = {}
 
 warnings = []
+warnings += test_böjningar(entries)
 warnings += test_references(entries, inflection=inflection, ids=ids)
-warnings += test_efterled(entries_by_id)
+#warnings += test_efterled(entries_by_id)
 warnings += test_field_info(resource_config, entries)
 warnings += test_ordled_agreement(entries)
 warnings += test_funny_characters(entries)

@@ -19,7 +19,7 @@ class MismatchedBrackets(FieldWarning):
         return result
 
 
-bracket_pairs = ["[]", "()", "{}"]
+bracket_pairs = ["[]", "()", "{}", '""']
 open_brackets = {s[0]: s[1] for s in bracket_pairs}
 close_brackets = {s[1]: s[0] for s in bracket_pairs}
 
@@ -28,7 +28,10 @@ def brackets_ok(text):
     context = []
 
     for c in text:
-        if c in open_brackets:
+        if c in open_brackets and c in close_brackets and context and context[-1] == c:  # matching "
+            context = context[:-1]
+
+        elif c in open_brackets:
             context.append(c)
 
         elif c in close_brackets:
@@ -76,7 +79,7 @@ def test_mismatched_brackets_etc(entries):
                     text = markup_parser.text_contents(tree)
 
                 if not brackets_ok(text):
-                    yield MismatchedBrackets(entry, namespace, path, None, "obalanserade parenteser")
+                    yield MismatchedBrackets(entry, namespace, path, None, "obalanserade parenteser eller citeringstecken")
 
                 if not quotes_ok(text):
-                    yield MismatchedBrackets(entry, namespace, path, None, "misstänksamma citeringstecken")
+                    yield MismatchedBrackets(entry, namespace, path, None, "kolla citeringstecken")
