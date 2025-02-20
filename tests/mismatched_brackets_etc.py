@@ -9,6 +9,9 @@ import lark
 class MismatchedBrackets(FieldWarning):
     comment: str | None = None
 
+    def collection(self):
+        return "Extra"
+
     def category(self):
         return "Parenteser och citeringstecken"
 
