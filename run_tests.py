@@ -6,6 +6,7 @@ from tests.mismatched_brackets_etc import test_mismatched_brackets_etc
 from tests.suspicious_böjningar import test_böjningar
 from tests.field_info import test_field_info
 from tests.efterled import test_efterled
+from tests.examples import test_examples
 from tqdm import tqdm
 from functools import partial
 from utils.inflection import Inflection
@@ -33,6 +34,7 @@ warnings += test_field_info(resource_config, entries)
 warnings += test_ordled_agreement(entries)
 warnings += test_funny_characters(entries)
 warnings += test_mismatched_brackets_etc(entries)
+warnings += test_examples(entries, inflection=inflection)
 test_reports = make_test_reports(warnings)
 write_test_reports_excel("results", test_reports)
 write_test_reports_html("results", test_reports)

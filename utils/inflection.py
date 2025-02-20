@@ -1,7 +1,8 @@
 from tqdm import tqdm
 from collections import defaultdict
-from utils.salex import is_visible
+from utils.salex import is_visible, variant_fields, SO, SAOL
 from karp.plugins.inflection_plugin import apply_rules
+from karp.foundation import json
 
 class Inflection:
     def __init__(self, entry_queries, entries):

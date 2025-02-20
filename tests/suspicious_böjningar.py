@@ -1,7 +1,7 @@
 from karp.foundation import json
 from collections import defaultdict, Counter
 import re
-from utils.salex import EntryWarning, entry_cell, SAOL, SO
+from utils.salex import EntryWarning, entry_cell, SAOL, SO, parse_böjning, is_visible
 from utils.testing import markup_cell
 from tqdm import tqdm
 from karp.lex.domain.dtos import EntryDto
@@ -22,7 +22,7 @@ class InflectionWarning(EntryWarning):
             "Misstänksamma böjningsformer": ", ".join(self.forms),
         }
 
-exceptions = "illa litet jag prinsregent envar halvannan skola endera dålig kunna vilkendera petit-chou mycken inner marxism-leninism bakända någondera föga liten mången lite gärna mycket god ond".split() 
+exceptions = "illa litet jag prinsregent envar halvannan skola endera dålig kunna vilkendera petit-chou mycken inner marxism-leninism bakända någondera föga liten mången lite gärna mycket god ond väl gammal bestjäla stjäla".split() 
 
 single_changes = {
     "a": ["ä", "ö", "o"],
@@ -69,6 +69,7 @@ unconditional_replacements = {
     "mm": "m",
     "vart": "var",
     "mar": "mr",
+    "ljd": "ld",
 }
 
 suffix_drops = ["s"]
@@ -97,15 +98,15 @@ def lcp(w1, w2):
 
 
 def check(entry, namespace, orig_böjning, böjning, word):
-    word = word.lower()
-    simplified = böjning.lower().replace("(", "").replace(")", "").replace(".", ".  ").replace("[", " [")
-    word_suffix = " ".join(word.split()[1:])
+    #word = word.lower()
+    #simplified = böjning.lower().replace("(", "").replace(")", "").replace(".", ".  ").replace("[", " [")
+    #word_suffix = " ".join(word.split()[1:])
     first_word = word.split()[0]
-    simplified = simplified.replace(" " + word_suffix, " ")
-    simplified = re.sub(r"\[[^]]*]", "", simplified)
+    #simplified = simplified.replace(" " + word_suffix, " ")
+    #simplified = re.sub(r"\[[^]]*]", "", simplified)
 
-    if any(suspicious(first_word, case) for case in simplified.split()):
-        yield InflectionWarning(entry, namespace, orig_böjning, [case for case in simplified.split() if suspicious(first_word, case)])
+    if any(suspicious(first_word, case) for case in böjning):
+        yield InflectionWarning(entry, namespace, orig_böjning, [case for case in böjning if suspicious(first_word, case)])
 
 
 
@@ -113,14 +114,14 @@ def check(entry, namespace, orig_böjning, böjning, word):
 def suspicious(word, case):
     orig_word = word
     # if case in ["el.", "pres.", "n.", "pl."]: return False
-    case = case.replace(",", "")
+    #case = case.replace(",", "")
     #if case in ["i", "och", "vid", "uppräkning", "saknas", "som", "används", "hellre", "än"]:
     #    return False
-    if not case: return False
+    #if not case: return False
     #if "." in case:
     #    return False
-    if not case[0].isalpha():
-        return False
+    #if not case[0].isalpha():
+    #    return False
 
     for from_, to in unconditional_replacements.items():
         word = word.replace(from_, to)
@@ -153,20 +154,8 @@ def test_böjningar(entries):
         word = entry.entry.get("ortografi")
         if len(word.split()) > 1: continue
         if word in exceptions: continue
-        if saol_lemma := entry.entry.get("saol", {}):
-            if not saol_lemma.get("visas"):
-                continue
-            böjning = saol_lemma.get("böjning")
-            if böjning:
-                parts = [f.text for f in utils.markup_parser.text_fragments(böjning) if not f.tags]
-                simp_böjning = " ".join(parts)
-                yield from check(entry, SAOL, böjning, simp_böjning, word)
-        if so_lemma := entry.entry.get("so", {}):
-            if not so_lemma.get("visas"):
-                continue
-            böjning = so_lemma.get("böjning")
-            if böjning:
-                parts = [f.text for f in utils.markup_parser.text_fragments(böjning) if f.tags == ["i"]]
-                simp_böjning = " ".join(parts)
-                yield from check(entry, SO, böjning, simp_böjning, word)
-
+        for namespace in [SAOL, SO]:
+            if namespace.path not in entry.entry or not is_visible(namespace.path, entry.entry): continue
+            orig_böjning = entry.entry.get(namespace.path, {}).get("böjning", "")
+            böjning = parse_böjning(entry, namespace)
+            yield from check(entry, namespace, orig_böjning, böjning, word)

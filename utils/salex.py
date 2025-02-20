@@ -373,3 +373,22 @@ class FieldWarning(EntryWarning):
             "Fält": json.path_str(self.path, strip_positions=True),
             "Text": highlight(self.highlight, json.get_path(path, self.entry.entry))
         }
+
+def parse_böjning(entry, namespace):
+    böjning = entry.entry.get(namespace.path, {}).get("böjning", "")
+    match namespace:
+        case Namespace.SAOL: 
+            parts = [f.text.strip() for f in markup_parser.text_fragments(böjning) if not f.tags]
+        case Namespace.SO:
+            parts = [f.text.strip() for f in markup_parser.text_fragments(böjning) if f.tags == ["i"]]
+
+    parts = [p for p in parts if p and p[0].isalpha()]
+    def simplify(p):
+        return p.replace("(","").replace(")","").replace(",","").replace(";","")
+    return [simplify(p) for p in parts]
+
+def variant_forms(entry):
+    for namespace in [SO, SAOL]:
+        for field in variant_fields[namespace]:
+            for path in json.expand_path(field, entry.entry):
+                yield json.get_path(path, entry.entry)
