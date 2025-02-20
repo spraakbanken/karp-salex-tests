@@ -175,38 +175,59 @@ def make_styler(workbook):
 
     return make_format
 
-def write_warnings(path, warnings):
-    by_workbook_and_worksheet = defaultdict(lambda: defaultdict(list))
-    for w in warnings:
-        book = w.collection()
-        sheet = w.category()
-        if sheet is not None:
-            by_workbook_and_worksheet[book][sheet].append(w)
+@dataclass
+class TestReport:
+    fields: list[str]
+    values: list[list[object]]
 
-    for bookname, by_worksheet in by_workbook_and_worksheet.items():
+def make_test_report(warnings) -> TestReport:
+    warnings.sort(key=lambda w: (type(w).__name__, w.sort_key()))
+    warnings = [w.to_dict() for w in warnings]
+
+    fields = []
+    for w in warnings:
+        fields += [f for f in w.keys() if f not in fields]
+
+    values = []
+    for w in warnings:
+        values.append([w.get(field) for field in fields])
+
+    return TestReport(fields=fields, values=values)
+
+
+def make_test_reports(warnings) -> dict[str, dict[str, TestReport]]:
+    by_collection_and_category = defaultdict(lambda: defaultdict(list))
+    for w in warnings:
+        collection = w.collection()
+        category = w.category()
+        if collection is not None and category is not None:
+            by_collection_and_category[collection][category].append(w)
+
+    def sorted_dict(d):
+        keys = list(d)
+        return {k: d[k] for k in sorted(keys)}
+
+    return {
+        collection: {
+            category: make_test_report(warnings)
+            for category, warnings in sorted_dict(by_category).items()
+        }
+        for collection, by_category in sorted_dict(by_collection_and_category).items()
+    }
+
+def write_test_reports(path, test_reports):
+    for bookname, by_worksheet in test_reports.items():
         with xlsxwriter.Workbook(Path(path) / (bookname + ".xlsx")) as workbook:
             style = make_styler(workbook)
 
-            for worksheet_name in sorted(by_worksheet.keys()):
-                ws = by_worksheet[worksheet_name]
-                ws.sort(key=lambda w: (type(w).__name__, w.sort_key()))
-                ws = [w.to_dict() for w in ws]
-
-                fields = []
-                for w in ws:
-                    fields += [f for f in w.keys() if f not in fields]
-
+            for worksheet_name, report in by_worksheet.items():
                 worksheet = workbook.add_worksheet(worksheet_name)
                 for cls, handler in _write_handlers:
                     worksheet.add_write_handler(cls, partial(handler, style=style))
 
-                worksheet.write_row(0, 0, fields, style(bold=True))
+                worksheet.write_row(0, 0, report.fields, style(bold=True))
 
-                def write_warning(i, w):
-                    worksheet.write_row(i, 0, (w.get(field) for field in fields))
-
-                for i, w in enumerate(ws, start=1):
-                    write_warning(i, w)
+                for i, w in enumerate(report.values, start=1):
+                    worksheet.write_row(i, 0, w)
 
                 worksheet.autofit()
-
