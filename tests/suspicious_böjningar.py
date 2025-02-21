@@ -1,7 +1,7 @@
 from karp.foundation import json
 from collections import defaultdict, Counter
 import re
-from utils.salex import EntryWarning, entry_cell, SAOL, SO, parse_böjning, is_visible
+from utils.salex import EntryWarning, entry_cell, SAOL, SO, parse_böjning, is_visible, variant_forms
 from utils.testing import markup_cell
 from tqdm import tqdm
 from karp.lex.domain.dtos import EntryDto
@@ -22,7 +22,8 @@ class InflectionWarning(EntryWarning):
             "Misstänksamma böjningsformer": ", ".join(self.forms),
         }
 
-exceptions = "illa litet jag prinsregent envar halvannan skola endera dålig kunna vilkendera petit-chou mycken inner marxism-leninism bakända någondera föga liten mången lite gärna mycket god ond väl gammal bestjäla stjäla".split() 
+#exceptions = "illa litet jag prinsregent envar halvannan skola endera dålig kunna vilkendera petit-chou mycken inner marxism-leninism bakända någondera föga liten mången lite gärna mycket god ond väl gammal bestjäla stjäla".split() 
+exceptions = []
 
 single_changes = {
     "a": ["ä", "ö", "o"],
@@ -97,13 +98,22 @@ def lcp(w1, w2):
     return "".join(result)
 
 
-def check(entry, namespace, orig_böjning, böjning, word):
+def check(inflection, entry, namespace, orig_böjning, böjning, word):
     #word = word.lower()
     #simplified = böjning.lower().replace("(", "").replace(")", "").replace(".", ".  ").replace("[", " [")
     #word_suffix = " ".join(word.split()[1:])
     first_word = word.split()[0]
     #simplified = simplified.replace(" " + word_suffix, " ")
     #simplified = re.sub(r"\[[^]]*]", "", simplified)
+
+    if word != first_word: return
+    böjning = [x for b in böjning for x in b.split()]
+
+    inflection_tables = [
+        f for w in [word, *variant_forms(entry)]
+        for f in inflection.inflected_forms(entry, w)]
+
+    böjning = [case for case in böjning if case not in inflection_tables]
 
     if any(suspicious(first_word, case) for case in böjning):
         yield InflectionWarning(entry, namespace, orig_böjning, [case for case in böjning if suspicious(first_word, case)])
@@ -120,8 +130,8 @@ def suspicious(word, case):
     #if not case: return False
     #if "." in case:
     #    return False
-    #if not case[0].isalpha():
-    #    return False
+    if not case[0].isalpha():
+        return False
 
     for from_, to in unconditional_replacements.items():
         word = word.replace(from_, to)
@@ -149,7 +159,7 @@ def suspicious(word, case):
     # if result: print(word, case, vowel_num)
     return result
 
-def test_böjningar(entries):
+def test_böjningar(entries, inflection):
     for entry in tqdm(entries, desc="Checking inflected forms"):
         word = entry.entry.get("ortografi")
         if len(word.split()) > 1: continue
@@ -158,4 +168,4 @@ def test_böjningar(entries):
             if namespace.path not in entry.entry or not is_visible(namespace.path, entry.entry): continue
             orig_böjning = entry.entry.get(namespace.path, {}).get("böjning", "")
             böjning = parse_böjning(entry, namespace)
-            yield from check(entry, namespace, orig_böjning, böjning, word)
+            yield from check(inflection, entry, namespace, orig_böjning, böjning, word)
