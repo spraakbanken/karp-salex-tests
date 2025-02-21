@@ -191,7 +191,7 @@ def find_ids(entry):
         # Variants do not generate a TEXT reference because they
         # are not supposed to have a homografNr
         # (checked in test_variantformer)
-        variant = namespace == SAOL and entry.entry.get("ingångstyp") == "variant"
+        variant = namespace == SAOL and entry.entry.get("ingångstyp") in ["variant", "se under"]
         if not variant:
             ortografi = entry.entry["ortografi"]
             homografNr = sub_entry.get("homografNr")

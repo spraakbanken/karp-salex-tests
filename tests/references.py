@@ -54,11 +54,13 @@ class BadReference(TestWarning):
     target: IdLocation | None
     comment: str | None = None
 
-    def category(self):
-        # Ignore TEXT references for now
+    def collection(self):
         if self.reference.type == TEXT:
-            return
+            return "Extra"
+        else:
+            return "Testrapporter"
 
+    def category(self):
         if self.target is not None:
             result = f"Felaktiga hänvisningar ({self.reference.namespace})"
         else:
@@ -107,6 +109,7 @@ class BadReferenceSyntax(TestWarning):
 def test_references(entries, inflection, ids=None):
     if ids is None: ids={}
     by_ortografi: dict[tuple[Namespace, str], list[Id]] = defaultdict(list)
+    by_ortografi_extra: set[tuple[Namespace, str]] = set()
 
     # Read in all IDs and check for duplicates
     for e in tqdm(entries, desc="Finding IDs"):
@@ -125,6 +128,9 @@ def test_references(entries, inflection, ids=None):
             # Populate index by ortografi/homografNr
             if id.type == TEXT and source.visible:
                 by_ortografi[id.namespace, id.id.ortografi].append(id)
+
+                for form in inflection.inflected_forms(e, id.id.ortografi):
+                    by_ortografi_extra.add(form)
 
     # Check for missing or unnecessary homografNr
     for (namespace, ortografi), homograf_ids in by_ortografi.items():
@@ -155,6 +161,9 @@ def test_references(entries, inflection, ids=None):
             if not loc.visible: continue
 
             if ref not in ids or not ids[ref].visible:
+                if ref.type == TEXT and ref.id.homografNr is None and (ref.namespace, ref.id.ortografi) in by_ortografi_extra:
+                    continue
+
                 if ref not in ids and ref.type == TEXT and ref.id.homografNr is None and (ref.namespace, ref.id.ortografi) in by_ortografi:
                     comment = "homografnummer saknas?"
                 elif ref in ids and not ids[ref].visible:
