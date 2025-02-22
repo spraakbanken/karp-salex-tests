@@ -1,6 +1,4 @@
-from karp.foundation import json as karp_json
 import pandas as pd
-import json
 
 problem_df = pd.read_excel("../../export/err.xlsx")
 problem_ids = set(problem_df["entry_id"].tolist())

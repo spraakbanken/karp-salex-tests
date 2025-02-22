@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from tqdm import tqdm
 import lark
 
+
 @dataclass(frozen=True)
 class MismatchedBrackets(FieldWarning):
     comment: str | None = None
@@ -45,6 +46,7 @@ def brackets_ok(text):
 
     return not context
 
+
 def quotes_ok(text):
     matches = 0
 
@@ -61,14 +63,17 @@ def quotes_ok(text):
 
     return (matches % 2) == 0
 
+
 def test_mismatched_brackets_etc(entries):
     for entry in tqdm(entries, desc="Checking bracket nesting"):
         for namespace in [SO, SAOL]:
             body = entry.entry.get(namespace.path, {})
             for path in json.all_paths(body):
                 value = json.get_path(path, body)
-                if not isinstance(value, str): continue
-                if not is_visible(path, body): continue
+                if not isinstance(value, str):
+                    continue
+                if not is_visible(path, body):
+                    continue
 
                 if path[-1] == "ordbildning":
                     text = value
@@ -82,7 +87,9 @@ def test_mismatched_brackets_etc(entries):
                     text = markup_parser.text_contents(tree)
 
                 if not brackets_ok(text):
-                    yield MismatchedBrackets(entry, namespace, path, None, "obalanserade parenteser eller citeringstecken")
+                    yield MismatchedBrackets(
+                        entry, namespace, path, None, "obalanserade parenteser eller citeringstecken"
+                    )
 
                 if not quotes_ok(text):
                     yield MismatchedBrackets(entry, namespace, path, None, "kolla citeringstecken")

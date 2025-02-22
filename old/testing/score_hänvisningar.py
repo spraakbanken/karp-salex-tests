@@ -1,11 +1,7 @@
 from karp.foundation import json
-from collections import defaultdict, Counter
-import pickle
+from collections import defaultdict
 from enum import Enum, global_enum
 import re
-from karp.lex.domain.dtos import EntryDto
-import csv
-import sys
 
 # import fasttext
 import gensim

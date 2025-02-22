@@ -1,7 +1,7 @@
-from karp.foundation import json
-from collections import defaultdict, Counter
+from collections import Counter
 from dataclasses import dataclass
 from utils.testing import TestWarning
+
 
 @dataclass
 class Statistics:
@@ -20,6 +20,7 @@ class Statistics:
     @property
     def present_freq(self):
         return self.present / self.total
+
 
 def resource_statistics(resource_config, entries):
     present_counts = Counter()
@@ -82,11 +83,9 @@ class FieldStatistics(TestWarning):
         return self._category
 
     def to_dict(self):
-        frequency = f"{self.statistics.present_freq*100:.2f}% ({self.statistics.present})"
-        return {
-            "Fält": self.statistics.field,
-            "Frekvens": frequency
-        }
+        frequency = f"{self.statistics.present_freq * 100:.2f}% ({self.statistics.present})"
+        return {"Fält": self.statistics.field, "Frekvens": frequency}
+
 
 def test_field_info(resource_config, entries):
     statistics = list(resource_statistics(resource_config, entries))

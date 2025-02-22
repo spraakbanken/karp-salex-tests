@@ -43,10 +43,10 @@ GRAMMAR = r"""
 
 
 class MarkupTransformer(Transformer):
-    markup = lambda _, args: args
-    tag = lambda _, args: Element(tag=args[0].value, contents=args[1])
-    text = lambda _, args: args[0].value
-    TEXT = lambda _, tok: tok.update(value=tok.replace(r"\[", "[").replace(r"\]", "]").replace(r"\\", "\\"))
+    markup = lambda _, args: args  # noqa: E731
+    tag = lambda _, args: Element(tag=args[0].value, contents=args[1])  # noqa: E731
+    text = lambda _, args: args[0].value  # noqa: E731
+    TEXT = lambda _, tok: tok.update(value=tok.replace(r"\[", "[").replace(r"\]", "]").replace(r"\\", "\\"))  # noqa: E731
 
 
 parser = Lark(GRAMMAR, parser="lalr", transformer=MarkupTransformer())
@@ -97,6 +97,7 @@ def text_contents(text: Union[str, "Markup"]) -> str:
 
     return "".join(fragment.text for fragment in text_fragments(text))
 
+
 def to_markup(text: Union[str, "Markup"]) -> str:
     """
     Convert a tree back to markup text.
@@ -109,6 +110,7 @@ def to_markup(text: Union[str, "Markup"]) -> str:
 
     else:
         return f"[{text.tag} {to_markup(text.contents)}]"
+
 
 def strip_markup(text: Union[str, "Markup"]) -> str:
     """

@@ -1,14 +1,13 @@
 from karp.foundation import json
-from collections import defaultdict, Counter
 from nltk.tokenize import word_tokenize
 from enum import global_enum, Enum
 import re
-import sys
 from utils.salex import is_visible, EntryWarning, SAOL, SO, parse_böjning, variant_forms
 from utils.testing import highlight
 from utils.markup_parser import strip_markup
 from tqdm import tqdm
 from dataclasses import dataclass
+
 
 @dataclass(frozen=True)
 class MissingWord(EntryWarning):
@@ -22,8 +21,9 @@ class MissingWord(EntryWarning):
     def to_dict(self):
         return super().to_dict() | {
             "Mening": self.text,
-            #"Saknas ett av": ", ".join(self.missing)
+            # "Saknas ett av": ", ".join(self.missing)
         }
+
 
 @dataclass(frozen=True)
 class ForbiddenWord(EntryWarning):
@@ -39,6 +39,7 @@ class ForbiddenWord(EntryWarning):
             "Mening": highlight(self.forbidden, self.text),
         }
 
+
 @global_enum
 class Kind(Enum):
     ABBREV = 0
@@ -49,7 +50,7 @@ fields = {
     "so.huvudbetydelser.idiom.idiombetydelser.exempel": (SO, UNABBREV),
     "so.huvudbetydelser.syntex.text": (SO, UNABBREV),
     "so.huvudbetydelser.underbetydelser.syntex.text": (SO, UNABBREV),
-    "saol.huvudbetydelser.exempel.text": (SAOL, ABBREV)
+    "saol.huvudbetydelser.exempel.text": (SAOL, ABBREV),
 }
 
 
@@ -144,14 +145,18 @@ def check_text(entry, namespace, field, ortografi, böjningar, text, kind):
 def test_examples(entries, inflection):
     for entry in tqdm(entries, desc="Checking example sentences"):
         for field, (namespace, kind) in fields.items():
-            böjningar1 = parse_böjning(entry, SO) #decode_böjning(entry.entry.get("so", {}).get("böjning", ""))
-            böjningar2 = parse_böjning(entry, SAOL) # decode_saol_böjning(entry.entry.get("saol", {}).get("böjning", ""))
+            böjningar1 = parse_böjning(entry, SO)  # decode_böjning(entry.entry.get("so", {}).get("böjning", ""))
+            böjningar2 = parse_böjning(
+                entry, SAOL
+            )  # decode_saol_böjning(entry.entry.get("saol", {}).get("böjning", ""))
             ortografi = entry.entry.get("ortografi")
             if not ortografi:
                 continue
 
-            inflectiontables = [f for v in [ortografi, *variant_forms(entry)] for f in inflection.inflected_forms(entry, v)]
-            if ortografi.startswith("-") or ortografi.endswith("-") or len(ortografi.split()) > 1: # not supported yet
+            inflectiontables = [
+                f for v in [ortografi, *variant_forms(entry)] for f in inflection.inflected_forms(entry, v)
+            ]
+            if ortografi.startswith("-") or ortografi.endswith("-") or len(ortografi.split()) > 1:  # not supported yet
                 continue
 
             for path in json.expand_path(field, entry.entry):
@@ -159,4 +164,6 @@ def test_examples(entries, inflection):
                     continue
                 value = strip_markup(json.get_path(path, entry.entry))
 
-                yield from check_text(entry, namespace, field, ortografi, böjningar1 + böjningar2 + inflectiontables, value, kind)
+                yield from check_text(
+                    entry, namespace, field, ortografi, böjningar1 + böjningar2 + inflectiontables, value, kind
+                )

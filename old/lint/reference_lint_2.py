@@ -1,12 +1,6 @@
 from karp.foundation import json
-from collections import defaultdict, Counter
-import pickle
-from dataclasses import dataclass
 from enum import Enum, global_enum
 import re
-import tqdm
-from karp.plugins.plugin import untransform_entry
-import itertools
 
 resource_config_old = resource_queries.by_resource_id("salex_pre_update").config
 resource_config_new = resource_queries.by_resource_id("salex").config

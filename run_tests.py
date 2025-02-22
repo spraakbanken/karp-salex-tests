@@ -7,7 +7,6 @@ from tests.suspicious_böjningar import test_böjningar
 from tests.field_info import test_field_info
 from tests.examples import test_examples
 from tqdm import tqdm
-from functools import partial
 from utils.inflection import Inflection
 from itertools import islice
 
@@ -20,7 +19,12 @@ else:
     entry_stop = None
 
 resource_config = resource_queries.by_resource_id("salex", expand_plugins=False).config
-entries = list(tqdm(islice(entry_queries.all_entries("salex", expand_plugins=False), entry_start, entry_stop), desc="Reading entries"))
+entries = list(
+    tqdm(
+        islice(entry_queries.all_entries("salex", expand_plugins=False), entry_start, entry_stop),
+        desc="Reading entries",
+    )
+)
 inflection = Inflection(entry_queries, entries)
 entries_by_id = {entry.id: entry for entry in entries}
 ids = {}

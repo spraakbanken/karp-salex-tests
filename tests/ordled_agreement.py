@@ -1,6 +1,7 @@
 from utils.salex import SAOL, EntryWarning
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class OrdledWarning(EntryWarning):
     ordled: str
@@ -10,6 +11,7 @@ class OrdledWarning(EntryWarning):
 
     def to_dict(self):
         return super().to_dict() | {"Ordled": self.ordled}
+
 
 def test_ordled_agreement(entries):
     for entry in entries:

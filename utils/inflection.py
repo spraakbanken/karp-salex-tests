@@ -1,8 +1,8 @@
 from tqdm import tqdm
 from collections import defaultdict
-from utils.salex import is_visible, variant_fields, SO, SAOL
+from utils.salex import is_visible
 from karp.plugins.inflection_plugin import apply_rules
-from karp.foundation import json
+
 
 class Inflection:
     def __init__(self, entry_queries, entries):
@@ -19,9 +19,15 @@ class Inflection:
             entry = entry.entry
 
             for namespace, other_namespace, dict in [("saol", "so", saol), ("so", "saol", so)]:
-                if namespace in entry and is_visible(namespace, entry) and other_namespace not in entry and "böjningsklass" in entry:
+                if (
+                    namespace in entry
+                    and is_visible(namespace, entry)
+                    and other_namespace not in entry
+                    and "böjningsklass" in entry
+                ):
                     word_class = entry["ordklass"]
-                    if word_class == "ptv.": word_class = "verb"
+                    if word_class == "ptv.":
+                        word_class = "verb"
                     dict[entry["ortografi"], word_class].add(entry["böjningsklass"])
 
         self.extra_inflection_classes = {k: v for k, v in saol.items() if k in so}
@@ -29,9 +35,11 @@ class Inflection:
     def inflected_forms(self, entry, word=None):
         headword = entry.entry["ortografi"]
         word_class = entry.entry["ordklass"]
-        if word_class == "ptv.": word_class = "verb"
+        if word_class == "ptv.":
+            word_class = "verb"
 
-        if word is None: word = headword
+        if word is None:
+            word = headword
         inflection_classes = {entry.entry.get("böjningsklass")}
         inflection_classes.update(self.extra_inflection_classes.get((word, word_class), set()))
         inflection_classes.update(self.extra_inflection_classes.get((headword, word_class), set()))

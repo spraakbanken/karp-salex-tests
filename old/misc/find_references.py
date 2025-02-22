@@ -2,7 +2,6 @@
 
 from karp.foundation import json
 from collections import defaultdict, Counter
-import pickle
 
 # a field is a possible key if it has >= 95% unique values and its
 # name ends with id or nr

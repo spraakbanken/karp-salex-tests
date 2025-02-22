@@ -3,13 +3,14 @@
 import karp.foundation.json as json
 from copy import deepcopy
 from enum import Enum, global_enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import re
 from karp.lex.domain.dtos import EntryDto
 import utils.markup_parser as markup_parser
 import lark
 from typing import Union
-from utils.testing import add_write_class, add_write_via_handler, TestWarning, highlight, link_cell
+from utils.testing import add_write_via_handler, TestWarning, highlight, link_cell
+
 
 def entry_is_visible(entry):
     return entry.get("visas", True)
@@ -54,8 +55,10 @@ class Namespace(Enum):
     @property
     def path(self):
         match self:
-            case Namespace.SO: return "so"
-            case Namespace.SAOL: return "saol"
+            case Namespace.SO:
+                return "so"
+            case Namespace.SAOL:
+                return "saol"
 
 
 @global_enum
@@ -77,13 +80,21 @@ class Id:
 
     def format(self):
         match self.type:
-            case IdType.LNR: return f"lnr{self.id}"
-            case IdType.VARIANT_LNR: return f"lnr{self.id}"
-            case IdType.XNR: return f"xnr{self.id}"
-            case IdType.KCNR: return f"inr{self.id}"
-            case IdType.INR: return f"(idiom) {self.id}"
-            case IdType.TEXT: return self.id.format()
-            case IdType.UNKNOWN: return f"(okänt format) {self.id}"
+            case IdType.LNR:
+                return f"lnr{self.id}"
+            case IdType.VARIANT_LNR:
+                return f"lnr{self.id}"
+            case IdType.XNR:
+                return f"xnr{self.id}"
+            case IdType.KCNR:
+                return f"inr{self.id}"
+            case IdType.INR:
+                return f"(idiom) {self.id}"
+            case IdType.TEXT:
+                return self.id.format()
+            case IdType.UNKNOWN:
+                return f"(okänt format) {self.id}"
+
 
 @dataclass(frozen=True)
 class TextId:
@@ -94,6 +105,7 @@ class TextId:
 
     def format(self):
         return " ".join(str(x) for x in [self.homografNr, self.ortografi] if x is not None)
+
 
 @dataclass
 class IdLocation:
@@ -109,6 +121,7 @@ class IdLocation:
     @property
     def field(self):
         return json.path_str(self.path, strip_positions=True)
+
 
 id_fields = {
     SO: {
@@ -140,7 +153,7 @@ ref_fields = {
     },
     SAOL: {
         "moderverb": LNR,
-        #"variantformer.id": LNR,
+        # "variantformer.id": LNR,
         # "enbartDigitalaHänvisningar.hänvisning": None, this is in +refid(...) form
         # "huvudbetydelser.hänvisning": None, this is in +refid(...) form
     },
@@ -150,8 +163,7 @@ no_refid_fields = {
     SO: {
         "uttal.fonetikparentes",
     },
-    SAOL: {
-    }
+    SAOL: {},
 }
 
 freetext_fields = {
@@ -159,10 +171,7 @@ freetext_fields = {
         "huvudbetydelser.definition",
         "huvudbetydelser.definitionstillägg",
     },
-    SAOL: {
-        "huvudbetydelser.definition",
-        "sammansättningskommentar"
-    }
+    SAOL: {"huvudbetydelser.definition", "sammansättningskommentar"},
 }
 
 
@@ -170,7 +179,7 @@ variant_fields = {
     SO: {
         "variantformer.ortografi",
         "vnomen.ortografi",
-        "förkortningar.ortografi", # TODO some of these should be l_nr references
+        "förkortningar.ortografi",  # TODO some of these should be l_nr references
     },
     SAOL: {
         "variantformer.ortografi",
@@ -180,7 +189,8 @@ variant_fields = {
 
 def find_ids(entry):
     for namespace in id_fields:
-        if namespace.path not in entry.entry: continue
+        if namespace.path not in entry.entry:
+            continue
         sub_entry = entry.entry[namespace.path]
 
         for field, kind in id_fields[namespace].items():
@@ -216,15 +226,18 @@ def parse_refid(kind, ref):
 
     return kind, ref
 
+
 text_xnr_regexp = re.compile(r"(.*)\s+([0-9]+)")
 ref_regexp = re.compile(r"(?<=refid=)[a-zA-Z0-9]*")
 full_ref_regexp = re.compile(r"\+\w+\(refid=([a-zA-Z0-9]*)\)")
+
 
 def parse_ref(entry, namespace, path, text):
     value = json.get_path(path, entry.get(namespace.path, {}))
 
     match = full_ref_regexp.fullmatch(value)
-    if match is None: return None
+    if match is None:
+        return None
 
     kind, ref = parse_refid(None, match.group(0))
     return Id(namespace, kind, ref), IdLocation(entry, namespace, path, orig_ref)
@@ -238,7 +251,7 @@ def find_text_references(tree_ortografi, tree_homografNr, tree):
         for subtree in tree:
             yield from find_text_references(tree_ortografi, tree_homografNr, subtree)
         return
-    
+
     if tree.tag != "i":
         yield from find_text_references(tree_ortografi, tree_homografNr, tree.contents)
         return
@@ -247,8 +260,10 @@ def find_text_references(tree_ortografi, tree_homografNr, tree):
 
     for item in items:
         item = item.strip()
-        if not item: continue
-        if ref_regexp.search(item): continue
+        if not item:
+            continue
+        if ref_regexp.search(item):
+            continue
         match markup_parser.parse(item):
             case [markup_parser.Element("sup", sup_contents), *rest]:
                 homografNr = int(markup_parser.text_contents(sup_contents))
@@ -278,6 +293,7 @@ def find_text_references(tree_ortografi, tree_homografNr, tree):
             homografNr = tree_homografNr
 
         yield markup_parser.to_markup(tree), TextId(ortografi, homografNr)
+
 
 def find_refs_in_namespace(entry, namespace):
     ortografi = entry.entry["ortografi"]
@@ -314,7 +330,7 @@ def find_refs_in_namespace(entry, namespace):
                     id = Id(namespace, TEXT, ref)
                     yield id, IdLocation(entry, namespace, path, text)
             except lark.LarkError:
-                pass # TODO: generate warning
+                pass  # TODO: generate warning
 
 
 def find_refs(entry):
@@ -332,10 +348,11 @@ def entry_name(entry, namespace):
     if homografNr is None:
         return ortografi
     else:
-        return f'{homografNr} {ortografi}'
+        return f"{homografNr} {ortografi}"
 
 
 # Output formats.
+
 
 def entry_cell(entry: EntryDto, namespace: Namespace):
     url = f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&show=salex:{entry.id}&tab=edit"
@@ -343,9 +360,11 @@ def entry_cell(entry: EntryDto, namespace: Namespace):
 
     return link_cell(url=url, text=name)
 
+
 add_write_via_handler(Namespace, str)
 add_write_via_handler(Id, lambda id: id.format())
 add_write_via_handler(IdLocation, lambda loc: entry_cell(entry=loc.entry, namespace=loc.namespace))
+
 
 @dataclass(frozen=True)
 class EntryWarning(TestWarning):
@@ -357,6 +376,7 @@ class EntryWarning(TestWarning):
         if include_ordbok and self.namespace is not None:
             result["Ordbok"] = self.namespace
         return result
+
 
 @dataclass(frozen=True)
 class FieldWarning(EntryWarning):
@@ -371,21 +391,25 @@ class FieldWarning(EntryWarning):
 
         return super().to_dict(**kwargs) | {
             "Fält": json.path_str(self.path, strip_positions=True),
-            "Text": highlight(self.highlight, json.get_path(path, self.entry.entry))
+            "Text": highlight(self.highlight, json.get_path(path, self.entry.entry)),
         }
+
 
 def parse_böjning(entry, namespace):
     böjning = entry.entry.get(namespace.path, {}).get("böjning", "")
     match namespace:
-        case Namespace.SAOL: 
+        case Namespace.SAOL:
             parts = [f.text.strip() for f in markup_parser.text_fragments(böjning) if not f.tags]
         case Namespace.SO:
             parts = [f.text.strip() for f in markup_parser.text_fragments(böjning) if f.tags == ["i"]]
 
     parts = [p for p in parts if p and p[0].isalpha()]
+
     def simplify(p):
-        return p.replace("(","").replace(")","").replace(",","").replace(";","")
+        return p.replace("(", "").replace(")", "").replace(",", "").replace(";", "")
+
     return [simplify(p) for p in parts]
+
 
 def variant_forms(entry):
     for namespace in [SO, SAOL]:

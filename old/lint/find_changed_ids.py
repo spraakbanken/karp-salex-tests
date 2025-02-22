@@ -1,7 +1,5 @@
 from karp.foundation import json
-from collections import defaultdict, Counter
 import pickle
-from karp.plugins.plugin import untransform_entry
 
 resource_config = resource_queries.by_resource_id("salex").config
 with open("entries.pickle", "rb") as file:
