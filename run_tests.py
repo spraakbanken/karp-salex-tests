@@ -26,7 +26,7 @@ entries_by_id = {entry.id: entry for entry in entries}
 ids = {}
 
 warnings = []
-warnings += test_böjningar(entries)
+warnings += test_böjningar(entries, inflection=inflection)
 warnings += test_references(entries, inflection=inflection, ids=ids)
 warnings += test_field_info(resource_config, entries)
 warnings += test_ordled_agreement(entries)

@@ -17,11 +17,11 @@ class MissingWord(EntryWarning):
     missing: list[str]
 
     def category(self):
-        return f"Exempel ({self.namespace})"
+        return f"Exempelmeningar osv ({self.namespace})"
 
     def to_dict(self):
         return super().to_dict() | {
-            "Exempel": self.text,
+            "Mening": self.text,
             #"Saknas ett av": ", ".join(self.missing)
         }
 
@@ -32,11 +32,11 @@ class ForbiddenWord(EntryWarning):
     forbidden: str
 
     def category(self):
-        return f"Exempel ({self.namespace})"
+        return f"Exempelmeningar osv ({self.namespace})"
 
     def to_dict(self):
         return super().to_dict() | {
-            "Exempel": highlight(self.forbidden, self.text),
+            "Mening": highlight(self.forbidden, self.text),
         }
 
 @global_enum
