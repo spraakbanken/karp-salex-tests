@@ -10,33 +10,20 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class MissingWord(EntryWarning):
+class MissingOrForbiddenWord(EntryWarning):
     field: str
     text: str
-    missing: list[str]
+    missing: list[str] | None
+    forbidden: list[str] | None
 
     def category(self):
         return f"Exempelmeningar osv ({self.namespace})"
 
     def to_dict(self):
+        text = self.text
+        if self.forbidden: text = highlight(self.forbidden, text)
         return super().to_dict() | {
-            "Mening": self.text,
-            # "Saknas ett av": ", ".join(self.missing)
-        }
-
-
-@dataclass(frozen=True)
-class ForbiddenWord(EntryWarning):
-    field: str
-    text: str
-    forbidden: str
-
-    def category(self):
-        return f"Exempelmeningar osv ({self.namespace})"
-
-    def to_dict(self):
-        return super().to_dict() | {
-            "Mening": highlight(self.forbidden, self.text),
+            "Mening": text,
         }
 
 
@@ -116,6 +103,10 @@ def check_text(entry, namespace, field, ortografi, böjningar, text, kind):
         text = text.lower()
         böjningar = [b.lower() for b in böjningar]
 
+    # Don't abbreviate if word is <= 2 letters
+    #if len(ortografi) <= 2 and kind == ABBREV:
+    #    kind = UNABBREV
+    
     def is_abbrev(w):
         return len(w) == 2 and w[0].isalpha() and w[1] == "."
 
@@ -129,18 +120,23 @@ def check_text(entry, namespace, field, ortografi, böjningar, text, kind):
 
     tokens = tokenize(text)
 
+    problem_missing = []
+    problem_forbidden = []
+
     for f in forbidden:
         ts = tokenize(f)
         if contains_sublist(ts, tokens, startswith=False):
-            yield ForbiddenWord(entry, namespace, field, text, f)
+            problem_forbidden.append(f)
 
     for c in compulsory:
         ts = tokenize(c)
         if contains_sublist(ts, tokens, startswith=True):
             break
     else:
-        yield MissingWord(entry, namespace, field, text, compulsory)
+        problem_missing += compulsory
 
+    if problem_missing or problem_forbidden:
+        yield MissingOrForbiddenWord(entry, namespace, field, text, missing=problem_missing, forbidden=problem_forbidden)
 
 def test_examples(entries, inflection):
     for entry in tqdm(entries, desc="Checking example sentences"):
