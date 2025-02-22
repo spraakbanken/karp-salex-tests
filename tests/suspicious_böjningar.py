@@ -22,7 +22,6 @@ class InflectionWarning(EntryWarning):
             "Misstänksamma böjningsformer": ", ".join(self.forms),
         }
 
-#exceptions = "illa litet jag prinsregent envar halvannan skola endera dålig kunna vilkendera petit-chou mycken inner marxism-leninism bakända någondera föga liten mången lite gärna mycket god ond väl gammal bestjäla stjäla".split() 
 exceptions = []
 
 single_changes = {
@@ -37,44 +36,19 @@ single_changes = {
 }
 
 suffix_changes = {
-    "er": ["rar"],
-    "veta": ["visste"],
-    "göra": ["gjorde", "gjort"],
-    "annan": ["andra"],
-    "denna": ["detta", "dessa"],
-    "denne": ["detta", "dessa"],
-    "säga": ["sagt"],
-    "dda": ["tt"],
-    "liten": ["små"],
-    "vilken": ["vars"],
-    "gammal": ["äldre", "äldst"],
-    "annan": ["andre", "annat", "andra"],
-    "väl": ["bättre", "bäst"],
-    "vara": ["är"],
     "bringa": ["bragd", "bragte", "bragt"],
-    "skäla": ["stal", "stulit", "stulen", "stulna", "stulet"],
 }
 
 prefix_changes = {
-    "ingen": ["inget", "inga"],
-    "den": ["det", "de"],
 }
 
 unconditional_replacements = {
-    "rj": "rd",
-    "dj": "dd",
-    "gj": "g",
     "gg": "g",
-    "skj": "sk",
-    "stj": "sk",
+    "mmar": "mmr",
     "mm": "m",
-    "vart": "var",
-    "mar": "mr",
-    "ljd": "ld",
 }
 
 suffix_drops = ["s"]
-vowels = "aeiouyäöå"
 
 
 def lcp(w1, w2):
