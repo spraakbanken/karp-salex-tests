@@ -97,6 +97,8 @@ def contains_sublist(needle, haystack, startswith=False):
 
 
 def check_text(entry, namespace, field, ortografi, böjningar, text, kind):
+    orig_text = text
+
     # If not a proper noun, match should be case-insensitive
     if not ortografi.isupper():
         ortografi = ortografi.lower()
@@ -115,7 +117,8 @@ def check_text(entry, namespace, field, ortografi, böjningar, text, kind):
         forbidden = [c + "." for c in letters if c != ortografi[0]] + [ortografi]
         compulsory = [ortografi[0] + "."] + [ortografi] + böjningar
     else:
-        forbidden = [c + "." for c in letters]
+        #forbidden = [c + "." for c in letters]
+        forbidden = [ortografi[0] + "."]
         compulsory = [ortografi] + böjningar
 
     tokens = tokenize(text)
@@ -136,7 +139,7 @@ def check_text(entry, namespace, field, ortografi, böjningar, text, kind):
         problem_missing += compulsory
 
     if problem_missing or problem_forbidden:
-        yield MissingOrForbiddenWord(entry, namespace, field, text, missing=problem_missing, forbidden=problem_forbidden)
+        yield MissingOrForbiddenWord(entry, namespace, field, orig_text, missing=problem_missing, forbidden=problem_forbidden)
 
 def test_examples(entries, inflection):
     for entry in tqdm(entries, desc="Checking example sentences"):
