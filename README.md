@@ -1,8 +1,18 @@
-Scripts for testing Salex. Can be executed using `karp-cli repl`.
+# Test scripts for Salex in Karp
 
-The plan is to build a library for expressing tests which handles
-talking to Karp, generating reports and so on, then convert the tests
-to use this library. Tests that have not yet been converted live in
-the `old` subdirectory.
+This repository contains scripts for testing Salex.
+
+To run the tests, run `karp-cli repl run_tests.py`. The test results
+will be stored in the `results` subdirectory in HTML and XLSX formats.
+
+The directory structure is as follows:
+
+* `tests/`: individual test scripts, run by `run_tests.py`.
+* `utils/`: various helper functions and classes for getting
+  data from Salex, plus libraries for writing tests and generating
+  formatted test output
+* `templates/`: HTML templates for the test report
+* `old`/: old test scripts that haven't yet been converted to work
+  with `run_tests.py`
 
 Tests for the Salex export process are not yet included in this repository.
