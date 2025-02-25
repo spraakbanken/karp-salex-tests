@@ -9,6 +9,11 @@ from tests.examples import test_examples
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
+from pathlib import Path
+
+top_dir = Path(__file__).parent
+results_dir = top_dir / "results"
+results_dir.mkdir(exist_ok=True)
 
 test_on_subset = False
 if test_on_subset:
@@ -38,5 +43,5 @@ warnings += test_funny_characters(entries)
 warnings += test_mismatched_brackets_etc(entries)
 warnings += test_examples(entries, inflection=inflection)
 test_reports = make_test_reports(warnings)
-write_test_reports_excel("results", test_reports)
-write_test_reports_html("results", test_reports)
+write_test_reports_excel(top_dir / "results", test_reports)
+write_test_reports_html(top_dir / "results", test_reports)
