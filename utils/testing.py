@@ -172,16 +172,20 @@ def rich_string_cell(*parts):
     return _RichString(parts=parts)
 
 
-def highlight(part, text):
+def highlight(part, text, case_sensitive=True):
+    flags = 0 if case_sensitive else re.IGNORECASE
     def find_next_match(part, text):
         if part is None:
             return None
         elif isinstance(part, re.Pattern):
-            result = part.search(text)
+            result = part.search(text, flags)
             if result:
                 return result.start(), result.end()
         elif isinstance(part, str):
-            result = text.find(part)
+            if case_sensitive:
+                result = text.find(part)
+            else:
+                result = text.lower().find(part.lower())
             if result != -1:
                 return result, result + len(part)
         elif isinstance(part, list) or isinstance(part, set):

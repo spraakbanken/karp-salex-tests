@@ -21,7 +21,7 @@ class MissingOrForbiddenWord(EntryWarning):
 
     def to_dict(self):
         text = self.text
-        if self.forbidden: text = highlight(self.forbidden, text)
+        if self.forbidden: text = highlight(self.forbidden, text, case_sensitive=False)
         return super().to_dict() | {
             "Mening": text,
         }
