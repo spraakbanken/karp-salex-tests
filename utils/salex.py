@@ -10,6 +10,7 @@ import utils.markup_parser as markup_parser
 import lark
 from typing import Union
 from utils.testing import add_write_via_handler, TestWarning, highlight, link_cell
+from urllib.parse import quote
 
 
 def entry_is_visible(entry):
@@ -355,7 +356,9 @@ def entry_name(entry, namespace):
 
 
 def entry_cell(entry: EntryDto, namespace: Namespace):
-    url = f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&show=salex:{entry.id}&tab=edit"
+    ortografi = entry.entry["ortografi"]
+    quoted_query = quote(f'and(equals|ortografi|{ortografi})')
+    url = f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&query={quoted_query}&show=salex:{entry.id}&tab=edit"
     name = entry_name(entry, namespace)
 
     return link_cell(url=url, text=name)
