@@ -11,7 +11,7 @@ from utils.salex import (
     IdLocation,
     parse_refid,
     TEXT,
-    variant_fields,
+    variant_forms,
     TestWarning,
     entry_cell,
     no_refid_fields,
@@ -266,18 +266,14 @@ def test_references(entries, inflection, ids=None):
                     if word == target_word:
                         continue
                     # Check to see if we find it in a variant form
-                    variant_forms = [
-                        json.get_path(path, target_body)
-                        for field in variant_fields[namespace]
-                        for path in json.expand_path(field, target_body)
-                    ]
-                    if word in variant_forms:
+                    variants = variant_forms(entry, namespace)
+                    if word in variants:
                         continue
 
                     # Check to see if we find it as an inflected form
                     if word not in [
                         form
-                        for w in [target_word, *variant_forms]
+                        for w in [target_word, *variants]
                         for form in inflection.inflected_forms(target_entry, w)
                     ]:
                         # TODO: report mistakenly pointing at variant

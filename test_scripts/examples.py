@@ -157,9 +157,7 @@ def test_examples(entries, inflection):
             if not ortografi:
                 continue
 
-            inflectiontables = [
-                f for v in [ortografi, *variant_forms(entry)] for f in inflection.inflected_forms(entry, v)
-            ]
+            inflectiontables = list(inflection.inflected_forms(entry))
             if ortografi.startswith("-") or ortografi.endswith("-") or len(ortografi.split()) > 1:  # not supported yet
                 continue
 

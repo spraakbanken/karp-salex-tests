@@ -65,12 +65,11 @@ class Namespace(Enum):
 @global_enum
 class IdType(Enum):
     LNR = 0
-    VARIANT_LNR = 1
-    XNR = 2
-    KCNR = 3
-    INR = 4
-    TEXT = 5
-    UNKNOWN = 6
+    XNR = 1
+    KCNR = 2
+    INR = 3
+    TEXT = 4
+    UNKNOWN = 5
 
 
 @dataclass(frozen=True)
@@ -82,8 +81,6 @@ class Id:
     def format(self):
         match self.type:
             case IdType.LNR:
-                return f"lnr{self.id}"
-            case IdType.VARIANT_LNR:
                 return f"lnr{self.id}"
             case IdType.XNR:
                 return f"xnr{self.id}"
@@ -137,7 +134,7 @@ id_fields = {
     SAOL: {
         "id": LNR,
         "huvudbetydelser.id": XNR,
-        "variantformer.id": VARIANT_LNR,
+        "variantformer.id": LNR,
     },
 }
 
@@ -176,40 +173,47 @@ freetext_fields = {
 }
 
 
-variant_fields = {
-    SO: {
-        "variantformer.ortografi",
-        "vnomen.ortografi",
-        "förkortningar.ortografi",  # TODO some of these should be l_nr references
-    },
-    SAOL: {
-        "variantformer.ortografi",
-    },
-}
-
-
 def find_ids(entry):
     for namespace in id_fields:
         if namespace.path not in entry.entry:
             continue
         sub_entry = entry.entry[namespace.path]
 
+        # SAOL lemmas with ingångstyp "variant" do not
+        # get an ID number as they should also appear under
+        # saol.variantformer (checked in test_variantformer)
+        if namespace == SAOL and entry.entry.get("ingångstyp") == "variant":
+            continue
+
         for field, kind in id_fields[namespace].items():
             for path in json.expand_path(field, sub_entry):
                 value = json.get_path(path, sub_entry)
                 yield Id(namespace, kind, value), IdLocation(entry, namespace, path, value)
 
-        # Variants do not generate a TEXT reference because they
-        # are not supposed to have a homografNr
-        # (checked in test_variantformer)
-        variant = namespace == SAOL and entry.entry.get("ingångstyp") in ["variant", "se under"]
-        if not variant:
-            ortografi = entry.entry["ortografi"]
-            homografNr = sub_entry.get("homografNr")
+        yield from text_ids(entry, namespace, include_linked=False)
 
-            id = Id(namespace, TEXT, TextId(ortografi, homografNr))
-            yield id, IdLocation(entry, namespace, [], id.format())
+def text_ids(entry, namespace, include_linked=True):
+    sub_entry = entry.entry.get(namespace.path, {})
+    for field, kind in id_fields[namespace].items():
+        if kind == LNR:
+            for path in json.expand_path(field, sub_entry):
+                parent = path[:-1]
+                if not include_linked and json.has_path(parent + ["moderverb"], sub_entry):
+                    continue
 
+                if not parent: # top-level entry
+                    ortografi = entry.entry["ortografi"]
+                else:
+                    ortografi = json.get_path(parent + ["ortografi"], sub_entry)
+
+                if json.has_path(parent + ["homografNr"], sub_entry):
+                    homografNr = json.get_path(parent + ["homografNr"], sub_entry)
+                else:
+                    homografNr = None
+
+                id = Id(namespace, TEXT, TextId(ortografi, homografNr))
+                loc = IdLocation(entry, namespace, path, id.format())
+                yield id, loc
 
 def parse_refid(kind, ref):
     if kind is None:
@@ -416,8 +420,9 @@ def parse_böjning(entry, namespace):
     return [simplify(p) for p in parts]
 
 
-def variant_forms(entry):
-    for namespace in [SO, SAOL]:
-        for field in variant_fields[namespace]:
-            for path in json.expand_path(field, entry.entry):
-                yield json.get_path(path, entry.entry)
+def variant_forms(entry, namespace, include_hidden=False):
+    for id, loc in text_ids(entry, namespace):
+        if not include_hidden and not loc.visible: continue
+
+        if id.id.ortografi != entry.entry["ortografi"]:
+            yield id.id.ortografi

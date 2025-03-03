@@ -80,7 +80,7 @@ def check(inflection, entry, namespace, orig_böjning, böjning, word):
         return
     böjning = [x for b in böjning for x in b.split()]
 
-    inflection_tables = [f for w in [word, *variant_forms(entry)] for f in inflection.inflected_forms(entry, w)]
+    inflection_tables = [f for w in [word, *variant_forms(entry, namespace)] for f in inflection.inflected_forms(entry, w)]
 
     böjning = [case for case in böjning if case not in inflection_tables]
 

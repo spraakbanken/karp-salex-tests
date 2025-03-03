@@ -31,9 +31,7 @@ def test_saol_missing(entries, inflection):
 
         ortografi = entry.entry["ortografi"]
         böjningar = parse_böjning(entry, SAOL)
-        if "so" in entry.entry:
-            del entry.entry["so"]  # only want SAOL variant forms
-        variants = variant_forms(entry)
+        variants = variant_forms(entry, SAOL)
         forms = [f for form in [ortografi, *variants] for f in inflection.inflected_forms(entry, form)]
         extras.update(böjningar)
         extras.update(variants)

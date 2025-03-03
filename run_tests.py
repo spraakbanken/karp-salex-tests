@@ -31,6 +31,7 @@ entries = list(
         desc="Reading entries",
     )
 )
+#entries = [e for e in entries if e.entry["ortografi"] == "hiphoppare"]
 inflection = Inflection(entry_queries, entries)
 entries_by_id = {entry.id: entry for entry in entries}
 ids = {}
