@@ -9,8 +9,10 @@ from utils.salex import (
     SAOL,
     Id,
     IdLocation,
+    IdWithLocation,
     parse_refid,
     TEXT,
+    LNR,
     variant_forms,
     TestWarning,
     entry_cell,
@@ -144,13 +146,24 @@ def test_references(entries, inflection, ids=None):
     by_ortografi: dict[tuple[Namespace, str], list[Id]] = defaultdict(list)
     by_ortografi_extra: set[tuple[Namespace, str]] = set()
 
+    def better(id, source, target):
+        if source.visible and not target.visible:
+            return True
+        if (
+            id.namespace == SAOL
+            and source.entry.entry.get("ingångstyp") == "variant"
+            and target.entry.entry.get("ingångstyp") != "variant"
+        ):
+            return True
+        return False
+
     # Read in all IDs and check for duplicates
     for e in tqdm(entries, desc="Finding IDs"):
         for id, source in find_ids(e):
             if id in ids:
-                if source.visible and not ids[id].visible:
+                if better(id, source, ids[id]):
                     ids[id] = source
-                elif not source.visible:
+                elif better(id, ids[id], source):
                     pass
                 elif not (id.type == TEXT and id.id.homografNr is None):  # missing homografNr are caught below
                     yield DuplicateId(entry=ids[id].entry, entry2=e, id=id)
@@ -158,12 +171,13 @@ def test_references(entries, inflection, ids=None):
             else:
                 ids[id] = source
 
-            # Populate index by ortografi/homografNr
-            if id.type == TEXT and source.visible:
-                by_ortografi[id.namespace, id.id.ortografi].append(id)
+    # Populate index by ortografi/homografNr
+    for id, source in ids.items():
+        if id.type == TEXT and source.visible:
+            by_ortografi[id.namespace, id.id.ortografi].append(id)
 
-                for form in inflection.inflected_forms(e, id.id.ortografi):
-                    by_ortografi_extra.add(form)
+            for form in inflection.inflected_forms(e, id.id.ortografi):
+                by_ortografi_extra.add(form)
 
     # Check for missing or unnecessary homografNr
     for (namespace, ortografi), homograf_ids in by_ortografi.items():
@@ -175,7 +189,20 @@ def test_references(entries, inflection, ids=None):
         homograf_ids = sorted(homograf_ids, key=key)
 
         def homografer():
-            return [ids[id] for id in homograf_ids]
+            return [IdWithLocation(id, ids[id]) for id in homograf_ids]
+
+        # SAOL: variant and "se under" forms don't have a homografNr,
+        # and homografNrs should be checked after removing variant forms
+        # SO: variant forms have a homografNr as usual
+        if namespace == SAOL:
+            variant_ids = [
+                id for id in homograf_ids if ids[id].entry.entry.get("ingångstyp") in ["variant", "se under"]
+            ]
+
+            if any(id.id.homografNr is not None for id in variant_ids):
+                yield HomografWrong(namespace, ortografi, homografer(), "variantform har homografnummer")
+
+            homograf_ids = [id for id in homograf_ids if id not in variant_ids]
 
         if len(homograf_ids) == 1 and homograf_ids[0].id.homografNr is not None:  # unnecessary hnr
             yield HomografWrong(namespace, ortografi, homografer(), "onödigt homografnummer")

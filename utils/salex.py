@@ -138,6 +138,8 @@ id_fields = {
     },
 }
 
+non_variant_id_fields = {SO: {"l_nr"}, SAOL: {"id"}}
+
 
 ref_fields = {
     SO: {
@@ -178,12 +180,6 @@ def find_ids(entry):
         if namespace.path not in entry.entry:
             continue
         sub_entry = entry.entry[namespace.path]
-
-        # SAOL lemmas with ingångstyp "variant" do not
-        # get an ID number as they should also appear under
-        # saol.variantformer (checked in test_variantformer)
-        if namespace == SAOL and entry.entry.get("ingångstyp") == "variant":
-            continue
 
         for field, kind in id_fields[namespace].items():
             for path in json.expand_path(field, sub_entry):
@@ -343,12 +339,16 @@ def find_refs(entry):
         yield from find_refs_in_namespace(entry, namespace)
 
 
-def entry_name(entry, namespace):
-    ortografi = entry.entry["ortografi"]
-    if namespace is None:
-        homografNr = None
+def entry_name(entry, namespace, ref=None):
+    if isinstance(ref, Id) and ref.type == TEXT:
+        ortografi = ref.id.ortografi
+        homografNr = ref.id.homografNr
     else:
-        homografNr = entry.entry.get(namespace.path, {}).get("homografNr")
+        ortografi = entry.entry["ortografi"]
+        if namespace is None:
+            homografNr = None
+        else:
+            homografNr = entry.entry.get(namespace.path, {}).get("homografNr")
 
     if homografNr is None:
         return ortografi
@@ -359,13 +359,13 @@ def entry_name(entry, namespace):
 # Output formats.
 
 
-def entry_cell(entry: EntryDto, namespace: Namespace):
+def entry_cell(entry: EntryDto, namespace: Namespace, ref: Id | None = None):
     ortografi = entry.entry["ortografi"]
     quoted_query = quote(f"and(equals|ortografi|{ortografi})")
     url = (
         f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&query={quoted_query}&show=salex:{entry.id}&tab=edit"
     )
-    name = entry_name(entry, namespace)
+    name = entry_name(entry, namespace, ref)
 
     return link_cell(url=url, text=name)
 
@@ -373,6 +373,17 @@ def entry_cell(entry: EntryDto, namespace: Namespace):
 add_write_via_handler(Namespace, str)
 add_write_via_handler(Id, lambda id: id.format())
 add_write_via_handler(IdLocation, lambda loc: entry_cell(entry=loc.entry, namespace=loc.namespace))
+
+
+@dataclass
+class IdWithLocation:
+    id: Id
+    loc: IdLocation
+
+
+add_write_via_handler(
+    IdWithLocation, lambda id_loc: entry_cell(entry=id_loc.loc.entry, namespace=id_loc.loc.namespace, ref=id_loc.id)
+)
 
 
 @dataclass(frozen=True)
