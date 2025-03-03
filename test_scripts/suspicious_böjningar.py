@@ -10,12 +10,12 @@ class InflectionWarning(EntryWarning):
     forms: list[str]
 
     def category(self):
-        return "Böjningsformer"
+        return f"Böjningsformer ({self.namespace})"
 
     def to_dict(self):
-        return super().to_dict() | {
+        return super().to_dict(include_ordbok=False) | {
             "Böjning": markup_cell(self.inflection),
-            "Misstänksamma böjningsformer": ", ".join(self.forms),
+            "Misstänkta böjningsformer": ", ".join(self.forms),
         }
 
 

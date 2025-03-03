@@ -1,6 +1,6 @@
 from tqdm import tqdm
 from collections import Counter, defaultdict
-from utils.salex import is_visible, EntryWarning, SO, SAOL, parse_böjning
+from utils.salex import is_visible, EntryWarning, SO, SAOL, parse_böjning, entry_name
 from utils.testing import markup_cell
 from dataclasses import dataclass
 
@@ -11,20 +11,18 @@ class SuspiciousInflection(EntryWarning):
     expected_inflection: str | None
     inflection_class: str
 
-    def collection(self):
-        if self.inflection:
-            return f"Böjningsfält ({self.namespace})"
-        else:
-            return f"Böjningsfält saknas ({self.namespace})"
-
     def category(self):
-        return self.inflection_class[:31]
+        return f"Böjningar ({self.namespace})"
 
     def to_dict(self):
         return super().to_dict(include_ordbok=False) | {
+            "Böjningsklass": self.inflection_class,
             "Böjning": markup_cell(self.inflection or ""),
-            "Vanligast böjning": markup_cell(self.expected_inflection or "")
+            "Vanligast böjning i klassen": markup_cell(self.expected_inflection or "")
         }
+
+    def sort_key(self):
+        return (self.inflection_class, self.entry.entry["ortografi"], entry_name(self.entry, self.namespace))
 
 
 def test_inflection_class_vs_inflection(entries):
@@ -40,6 +38,7 @@ def test_inflection_class_vs_inflection(entries):
             for entry in entries:
                 if namespace.path not in entry.entry: continue
                 if not is_visible(namespace.path, entry.entry): continue
+                if entry.entry.get("ingångstyp") in ["se under", "variant"]: continue
 
                 inflection = entry.entry[namespace.path].get("böjning")
                 inflection_counts[inflection] += 1
@@ -59,6 +58,7 @@ def test_inflection_class_vs_inflection(entries):
             for entry in entries:
                 if namespace.path not in entry.entry: continue
                 if not is_visible(namespace.path, entry.entry): continue
+                if entry.entry.get("ingångstyp") in ["se under", "variant"]: continue
 
                 inflection = entry.entry[namespace.path].get("böjning")
                 if inflection != expected_inflection:
