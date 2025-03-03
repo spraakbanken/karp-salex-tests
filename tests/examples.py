@@ -17,7 +17,8 @@ class MissingOrForbiddenWord(EntryWarning):
     forbidden: list[str] | None
 
     def category(self):
-        return f"Exempelmeningar osv ({self.namespace})"
+        descr = "korta" if len(self.entry.entry["ortografi"]) <= 3 else "långa"
+        return f"Språkprov osv ({self.namespace}) {descr}"
 
     def to_dict(self):
         text = self.text
