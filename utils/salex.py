@@ -417,7 +417,7 @@ class FieldWarning(EntryWarning):
         }
 
 
-def parse_böjning(entry, namespace):
+def parse_böjning(entry, namespace, only_alpha=True):
     böjning = entry.entry.get(namespace.path, {}).get("böjning", "")
     match namespace:
         case Namespace.SAOL:
@@ -425,7 +425,7 @@ def parse_böjning(entry, namespace):
         case Namespace.SO:
             parts = [f.text.strip() for f in markup_parser.text_fragments(böjning) if f.tags == ["i"]]
 
-    parts = [p for p in parts if p and p[0].isalpha()]
+    if only_alpha: parts = [p for p in parts if p and p[0].isalpha()]
 
     def simplify(p):
         return p.replace("(", "").replace(")", "").replace(",", "").replace(";", "")

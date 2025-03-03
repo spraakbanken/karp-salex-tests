@@ -7,6 +7,7 @@ from test_scripts.suspicious_böjningar import test_böjningar
 from test_scripts.field_info import test_field_info
 from test_scripts.examples import test_examples
 from test_scripts.saol_missing import test_saol_missing
+from test_scripts.inflection_class_vs_inflection import test_inflection_class_vs_inflection
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -45,6 +46,7 @@ warnings += test_ordled_agreement(entries)
 warnings += test_funny_characters(entries)
 warnings += test_mismatched_brackets_etc(entries)
 warnings += test_examples(entries, inflection=inflection)
+warnings += test_inflection_class_vs_inflection(entries)
 test_reports = make_test_reports(warnings)
 write_test_reports_excel(top_dir / "results", test_reports)
 write_test_reports_html(top_dir / "results", test_reports)

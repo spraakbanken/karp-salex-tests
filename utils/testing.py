@@ -139,7 +139,9 @@ class _RichString:
                 i += 1
 
         # Single strings are not supported by xlsxwriter.
-        if len(parts) == 1:
+        if len(parts) == 0:
+            return worksheet.write_blank(row, col, cell_format)
+        elif len(parts) == 1:
             return worksheet.write_string(row, col, parts[0], cell_format)
         elif len(parts) == 2 and isinstance(parts[0], Format):
             return worksheet.write_string(row, col, parts[1], cell_format=parts[0])
