@@ -266,7 +266,7 @@ def test_references(entries, inflection, ids=None):
                     if word == target_word:
                         continue
                     # Check to see if we find it in a variant form
-                    variants = variant_forms(entry, namespace)
+                    variants = list(variant_forms(target_entry, namespace))
                     if word in variants:
                         continue
 
