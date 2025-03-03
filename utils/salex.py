@@ -188,6 +188,7 @@ def find_ids(entry):
 
         yield from text_ids(entry, namespace, include_linked=False)
 
+
 def text_ids(entry, namespace, include_linked=True):
     sub_entry = entry.entry.get(namespace.path, {})
     for field, kind in id_fields[namespace].items():
@@ -197,7 +198,7 @@ def text_ids(entry, namespace, include_linked=True):
                 if not include_linked and json.has_path(parent + ["moderverb"], sub_entry):
                     continue
 
-                if not parent: # top-level entry
+                if not parent:  # top-level entry
                     ortografi = entry.entry["ortografi"]
                 else:
                     ortografi = json.get_path(parent + ["ortografi"], sub_entry)
@@ -210,6 +211,7 @@ def text_ids(entry, namespace, include_linked=True):
                 id = Id(namespace, TEXT, TextId(ortografi, homografNr))
                 loc = IdLocation(entry, namespace, path, id.format())
                 yield id, loc
+
 
 def parse_refid(kind, ref):
     if kind is None:
@@ -433,7 +435,8 @@ def parse_böjning(entry, namespace):
 
 def variant_forms(entry, namespace, include_hidden=False):
     for id, loc in text_ids(entry, namespace):
-        if not include_hidden and not loc.visible: continue
+        if not include_hidden and not loc.visible:
+            continue
 
         if id.id.ortografi != entry.entry["ortografi"]:
             yield id.id.ortografi

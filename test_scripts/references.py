@@ -299,9 +299,7 @@ def test_references(entries, inflection, ids=None):
 
                     # Check to see if we find it as an inflected form
                     if word not in [
-                        form
-                        for w in [target_word, *variants]
-                        for form in inflection.inflected_forms(target_entry, w)
+                        form for w in [target_word, *variants] for form in inflection.inflected_forms(target_entry, w)
                     ]:
                         # TODO: report mistakenly pointing at variant
                         # form as a minor error?
