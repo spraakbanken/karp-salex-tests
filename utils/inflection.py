@@ -1,7 +1,7 @@
 from tqdm import tqdm
 from collections import defaultdict
 from utils.salex import is_visible
-from karp.plugins.inflection_plugin import apply_rules
+from karp.plugins.inflection_plugin import apply_rules, RuleNotPossible
 
 
 class Inflection:
@@ -46,4 +46,7 @@ class Inflection:
 
         for inflection_class in inflection_classes:
             for case in self.inflection_rules.get(inflection_class, []):
-                yield apply_rules(word, case["rules"])
+                try:
+                    yield apply_rules(word, case["rules"])
+                except RuleNotPossible:
+                    pass
