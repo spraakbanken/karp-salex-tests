@@ -22,7 +22,8 @@ class MissingOrForbiddenWord(EntryWarning):
 
     def to_dict(self):
         text = self.text
-        if self.forbidden: text = highlight(self.forbidden, text, case_sensitive=False)
+        if self.forbidden:
+            text = highlight(self.forbidden, text, case_sensitive=False)
         return super().to_dict() | {
             "Mening": text,
         }
@@ -107,9 +108,9 @@ def check_text(entry, namespace, field, ortografi, böjningar, text, kind):
         böjningar = [b.lower() for b in böjningar]
 
     # Don't abbreviate if word is <= 2 letters
-    #if len(ortografi) <= 2 and kind == ABBREV:
+    # if len(ortografi) <= 2 and kind == ABBREV:
     #    kind = UNABBREV
-    
+
     def is_abbrev(w):
         return len(w) == 2 and w[0].isalpha() and w[1] == "."
 
@@ -118,7 +119,7 @@ def check_text(entry, namespace, field, ortografi, böjningar, text, kind):
         forbidden = [c + "." for c in letters if c != ortografi[0]] + [ortografi]
         compulsory = [ortografi[0] + "."] + [ortografi] + böjningar
     else:
-        #forbidden = [c + "." for c in letters]
+        # forbidden = [c + "." for c in letters]
         forbidden = [ortografi[0] + "."]
         compulsory = [ortografi] + böjningar
 
@@ -140,7 +141,10 @@ def check_text(entry, namespace, field, ortografi, böjningar, text, kind):
         problem_missing += compulsory
 
     if problem_missing or problem_forbidden:
-        yield MissingOrForbiddenWord(entry, namespace, field, orig_text, missing=problem_missing, forbidden=problem_forbidden)
+        yield MissingOrForbiddenWord(
+            entry, namespace, field, orig_text, missing=problem_missing, forbidden=problem_forbidden
+        )
+
 
 def test_examples(entries, inflection):
     for entry in tqdm(entries, desc="Checking example sentences"):

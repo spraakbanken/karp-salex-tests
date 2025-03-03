@@ -16,6 +16,7 @@ class EntryMissingInSAOL(EntryWarning):
     def to_dict(self):
         return super().to_dict(include_ordbok=False)
 
+
 def test_saol_missing(entries, inflection):
     # Pair up SO-only and SAOL-only lemmas
     lemmas = {SAOL: defaultdict(list), SO: defaultdict(list)}
@@ -30,10 +31,10 @@ def test_saol_missing(entries, inflection):
 
         ortografi = entry.entry["ortografi"]
         böjningar = parse_böjning(entry, SAOL)
-        if "so" in entry.entry: del entry.entry["so"] # only want SAOL variant forms
+        if "so" in entry.entry:
+            del entry.entry["so"]  # only want SAOL variant forms
         variants = variant_forms(entry)
-        forms = [f for form in [ortografi, *variants] for f in
-                 inflection.inflected_forms(entry, form)]
+        forms = [f for form in [ortografi, *variants] for f in inflection.inflected_forms(entry, form)]
         extras.update(böjningar)
         extras.update(variants)
         extras.update(forms)

@@ -2,6 +2,12 @@
 
 This repository contains scripts for testing Salex.
 
+To install:
+
+1. Make sure you have `karp-backend` installed.
+2. Run `poetry shell` **inside of `karp-backend`**.
+3. Then run `poetry install` in this directory, to install all dependencies.
+
 To run the tests, run `karp-cli repl run_tests.py`. The test results
 will be stored in the `results` subdirectory in HTML and XLSX formats.
 

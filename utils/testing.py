@@ -174,6 +174,7 @@ def rich_string_cell(*parts):
 
 def highlight(part, text, case_sensitive=True):
     flags = 0 if case_sensitive else re.IGNORECASE
+
     def find_next_match(part, text):
         if part is None:
             return None

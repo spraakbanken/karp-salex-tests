@@ -357,8 +357,10 @@ def entry_name(entry, namespace):
 
 def entry_cell(entry: EntryDto, namespace: Namespace):
     ortografi = entry.entry["ortografi"]
-    quoted_query = quote(f'and(equals|ortografi|{ortografi})')
-    url = f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&query={quoted_query}&show=salex:{entry.id}&tab=edit"
+    quoted_query = quote(f"and(equals|ortografi|{ortografi})")
+    url = (
+        f"https://spraakbanken.gu.se/karp/?mode=salex&lexicon=salex&query={quoted_query}&show=salex:{entry.id}&tab=edit"
+    )
     name = entry_name(entry, namespace)
 
     return link_cell(url=url, text=name)
