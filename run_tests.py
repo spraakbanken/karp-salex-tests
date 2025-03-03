@@ -6,6 +6,7 @@ from tests.mismatched_brackets_etc import test_mismatched_brackets_etc
 from tests.suspicious_böjningar import test_böjningar
 from tests.field_info import test_field_info
 from tests.examples import test_examples
+from tests.saol_missing import test_saol_missing
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -35,6 +36,7 @@ entries_by_id = {entry.id: entry for entry in entries}
 ids = {}
 
 warnings = []
+warnings += test_saol_missing(entries, inflection=inflection)
 warnings += test_böjningar(entries, inflection=inflection)
 warnings += test_references(entries, inflection=inflection, ids=ids)
 warnings += test_field_info(resource_config, entries)
