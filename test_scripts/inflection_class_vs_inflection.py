@@ -13,11 +13,8 @@ class SuspiciousInflection(EntryWarning):
     expected_inflection: str | None
     inflection_class: str
 
-    def collection(self):
-        return f"Böjningar"
-
     def category(self):
-        return f"Böjningar ({self.namespace})"
+        return f"Böjningar extra test ({self.namespace})"
 
     def to_dict(self):
         return super().to_dict(include_ordbok=False) | {
