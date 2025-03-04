@@ -3,13 +3,18 @@ from collections import Counter, defaultdict
 from utils.salex import is_visible, EntryWarning, SO, SAOL, parse_böjning, entry_name
 from utils.testing import markup_cell
 from dataclasses import dataclass
+import re
 
+uttal_re = re.compile(r" \[r \\\[[^\]]*\\\]\]")
 
 @dataclass(frozen=True)
 class SuspiciousInflection(EntryWarning):
     inflection: str | None
     expected_inflection: str | None
     inflection_class: str
+
+    def collection(self):
+        return f"Böjningar"
 
     def category(self):
         return f"Böjningar ({self.namespace})"
@@ -54,6 +59,7 @@ def test_inflection_class_vs_inflection(entries):
                 expected_inflection = None
 
             if expected_inflection is None: continue
+            simplified_expected_inflection = uttal_re.sub("", expected_inflection)
 
             for entry in entries:
                 if namespace.path not in entry.entry: continue
@@ -61,5 +67,9 @@ def test_inflection_class_vs_inflection(entries):
                 if entry.entry.get("ingångstyp") in ["se under", "variant"]: continue
 
                 inflection = entry.entry[namespace.path].get("böjning")
-                if inflection != expected_inflection:
+                if inflection is None:
+                    simplified_inflection = None
+                else:
+                    simplified_inflection = uttal_re.sub("", inflection)
+                if simplified_inflection != simplified_expected_inflection:
                     yield SuspiciousInflection(entry, namespace, inflection, expected_inflection, inflection_class)
