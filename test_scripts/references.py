@@ -18,6 +18,7 @@ from utils.salex import (
     entry_cell,
     no_refid_fields,
     id_fields,
+    find_refs_in_namespace,
 )
 from utils.testing import highlight
 from dataclasses import dataclass
@@ -191,18 +192,26 @@ def test_references(entries, inflection, ids=None):
         def homografer():
             return [IdWithLocation(id, ids[id]) for id in homograf_ids]
 
-        # SAOL: variant and "se under" forms don't have a homografNr,
-        # and homografNrs should be checked after removing variant forms
-        # SO: variant forms have a homografNr as usual
         if namespace == SAOL:
-            variant_ids = [
-                id for id in homograf_ids if ids[id].entry.entry.get("ingångstyp") in ["variant", "se under"]
-            ]
+            # SAOL: Certain entries don't have a homografNr, namely:
+            # "se under" entries that point at an inflected form of the word.
+            # (We implement this as: "don't point at an uninflected
+            # form of the word".)
+            # homografNrs should be checked after removing these entries.
+            unnumbered_ids = []
+            for id in homograf_ids:
+                if ids[id].entry.entry.get("ingångstyp") != "se under":
+                    continue
 
-            if any(id.id.homografNr is not None for id in variant_ids):
-                yield HomografWrong(namespace, ortografi, homografer(), "variantform har homografnummer")
+                targets = find_refs_in_namespace(ids[id].entry, SAOL)
+                forms = [f for ref, _ in targets for f in variant_forms(ids[ref].entry, SAOL, include_main_form=True)]
+                if id.id.ortografi not in forms:
+                    unnumbered_ids.append(id)
 
-            homograf_ids = [id for id in homograf_ids if id not in variant_ids]
+            if any(id.id.homografNr is not None for id in unnumbered_ids):
+                yield HomografWrong(namespace, ortografi, homografer(), "'se under'-form har homografnummer")
+
+            homograf_ids = [id for id in homograf_ids if id not in unnumbered_ids]
 
         if len(homograf_ids) == 1 and homograf_ids[0].id.homografNr is not None:  # unnecessary hnr
             yield HomografWrong(namespace, ortografi, homografer(), "onödigt homografnummer")

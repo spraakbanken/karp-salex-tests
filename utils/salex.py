@@ -433,10 +433,10 @@ def parse_böjning(entry, namespace, only_alpha=True):
     return [simplify(p) for p in parts]
 
 
-def variant_forms(entry, namespace, include_hidden=False):
+def variant_forms(entry, namespace, include_hidden=False, include_main_form=False):
     for id, loc in text_ids(entry, namespace):
         if not include_hidden and not loc.visible:
             continue
 
-        if id.id.ortografi != entry.entry["ortografi"]:
+        if include_main_form or id.id.ortografi != entry.entry["ortografi"]:
             yield id.id.ortografi
