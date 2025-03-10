@@ -2,7 +2,7 @@ from karp.foundation import json
 from nltk.tokenize import word_tokenize
 from enum import global_enum, Enum
 import re
-from utils.salex import is_visible, EntryWarning, SAOL, SO, parse_böjning, variant_forms
+from utils.salex import is_visible, EntryWarning, SAOL, SO, parse_böjning
 from utils.testing import highlight
 from utils.markup_parser import strip_markup
 from tqdm import tqdm

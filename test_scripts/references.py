@@ -12,7 +12,6 @@ from utils.salex import (
     IdWithLocation,
     parse_refid,
     TEXT,
-    LNR,
     variant_forms,
     TestWarning,
     entry_cell,

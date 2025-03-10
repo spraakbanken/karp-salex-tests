@@ -425,7 +425,8 @@ def parse_böjning(entry, namespace, only_alpha=True):
         case Namespace.SO:
             parts = [f.text.strip() for f in markup_parser.text_fragments(böjning) if f.tags == ["i"]]
 
-    if only_alpha: parts = [p for p in parts if p and p[0].isalpha()]
+    if only_alpha:
+        parts = [p for p in parts if p and p[0].isalpha()]
 
     def simplify(p):
         return p.replace("(", "").replace(")", "").replace(",", "").replace(";", "")
