@@ -8,6 +8,7 @@ from test_scripts.field_info import test_field_info
 from test_scripts.examples import test_examples
 from test_scripts.saol_missing import test_saol_missing
 from test_scripts.inflection_class_vs_inflection import test_inflection_class_vs_inflection
+from test_scripts.particle_verbs import test_particle_verbs
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -62,6 +63,7 @@ def main(
         partial(test_mismatched_brackets_etc, entries),
         partial(test_examples, entries, inflection=inflection),
         partial(test_inflection_class_vs_inflection, entries),
+        partial(test_particle_verbs, entries),
     ]
 
     if test:
