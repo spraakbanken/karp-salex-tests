@@ -30,7 +30,6 @@ class TestWarning:
     def to_dict(self) -> dict[str, object]:
         raise NotImplementedError
 
-    @abstractmethod
     def sort_key(self) -> tuple[str, ...]:
         return ()
 

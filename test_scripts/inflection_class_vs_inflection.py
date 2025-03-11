@@ -1,11 +1,12 @@
 from tqdm import tqdm
 from collections import Counter, defaultdict
-from utils.salex import is_visible, EntryWarning, SO, SAOL, parse_böjning, entry_name
+from utils.salex import is_visible, EntryWarning, SAOL, parse_böjning, entry_name
 from utils.testing import markup_cell
 from dataclasses import dataclass
 import re
 
 uttal_re = re.compile(r" \[r \\\[[^\]]*\\\]\]")
+
 
 @dataclass(frozen=True)
 class SuspiciousInflection(EntryWarning):
@@ -20,7 +21,7 @@ class SuspiciousInflection(EntryWarning):
         return super().to_dict(include_ordbok=False) | {
             "Böjningsklass": self.inflection_class,
             "Böjning": markup_cell(self.inflection or ""),
-            "Vanligast böjning i klassen": markup_cell(self.expected_inflection or "")
+            "Vanligast böjning i klassen": markup_cell(self.expected_inflection or ""),
         }
 
     def sort_key(self):
@@ -38,30 +39,40 @@ def test_inflection_class_vs_inflection(entries):
         for namespace in [SAOL]:
             inflection_counts = Counter()
             for entry in entries:
-                if namespace.path not in entry.entry: continue
-                if not is_visible(namespace.path, entry.entry): continue
-                if entry.entry.get("ingångstyp") in ["se under", "variant"]: continue
+                if namespace.path not in entry.entry:
+                    continue
+                if not is_visible(namespace.path, entry.entry):
+                    continue
+                if entry.entry.get("ingångstyp") in ["se under", "variant"]:
+                    continue
 
                 inflection = entry.entry[namespace.path].get("böjning")
                 inflection_counts[inflection] += 1
 
             if inflection_counts:
                 expected_inflection, _ = inflection_counts.most_common(1)[0]
-                sample_entry = next(e for e in entries if e.entry.get(namespace.path, {}).get("böjning") == expected_inflection)
+                sample_entry = next(
+                    e for e in entries if e.entry.get(namespace.path, {}).get("böjning") == expected_inflection
+                )
 
                 forms = parse_böjning(sample_entry, namespace, only_alpha=False)
-                if not all(f.startswith("~") for form in forms for f in form.split()): continue
+                if not all(f.startswith("~") for form in forms for f in form.split()):
+                    continue
 
             else:
                 expected_inflection = None
 
-            if expected_inflection is None: continue
+            if expected_inflection is None:
+                continue
             simplified_expected_inflection = uttal_re.sub("", expected_inflection)
 
             for entry in entries:
-                if namespace.path not in entry.entry: continue
-                if not is_visible(namespace.path, entry.entry): continue
-                if entry.entry.get("ingångstyp") in ["se under", "variant"]: continue
+                if namespace.path not in entry.entry:
+                    continue
+                if not is_visible(namespace.path, entry.entry):
+                    continue
+                if entry.entry.get("ingångstyp") in ["se under", "variant"]:
+                    continue
 
                 inflection = entry.entry[namespace.path].get("böjning")
                 if inflection is None:

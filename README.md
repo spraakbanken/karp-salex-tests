@@ -8,8 +8,7 @@ To install:
 2. Run `poetry shell` **inside of `karp-backend`**.
 3. Then run `poetry install` in this directory, to install all dependencies.
 
-To run the tests, run `karp-cli repl run_tests.py`. The test results
-will be stored in the `results` subdirectory in HTML and XLSX formats.
+To run the tests, run `karp-cli repl run_tests.py -o /path/to/output/directory`.
 
 The directory structure is as follows:
 
