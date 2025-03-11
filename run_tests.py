@@ -12,41 +12,67 @@ from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
 from pathlib import Path
+import typer
+from functools import partial
+from typing import Optional, Annotated
 
-top_dir = Path(__file__).parent
-results_dir = top_dir / "results"
-results_dir.mkdir(exist_ok=True)
 
-test_on_subset = False
-if test_on_subset:
-    entry_start = 100000
-    entry_stop = 110000
-else:
-    entry_start = None
-    entry_stop = None
+def func_name(func):
+    if isintance(func, partial):
+        return func_name(func.func)
+    else:
+        return func.__name__
 
-resource_config = resource_queries.by_resource_id("salex", expand_plugins=False).config
-entries = list(
-    tqdm(
-        islice(entry_queries.all_entries("salex", expand_plugins=False), entry_start, entry_stop),
-        desc="Reading entries",
+
+def main(
+    output_directory: Annotated[
+        Path, typer.Option("--output-directory", "-o", help="output directory", show_default=False)
+    ],
+    first_entry: Annotated[
+        Optional[int], typer.Option(help="number of first entry to test", show_default="all")
+    ] = None,
+    last_entry: Annotated[Optional[int], typer.Option(help="number of last entry to test", show_default="all")] = None,
+    words: Annotated[Optional[list[str]], typer.Option(help="which words to test", show_default="all")] = None,
+    test: Annotated[Optional[str], typer.Option(help="which test to run", show_default="all")] = None,
+):
+    output_directory.mkdir(exist_ok=True)
+
+    resource_config = resource_queries.by_resource_id("salex", expand_plugins=False).config
+    entries = list(
+        tqdm(
+            islice(entry_queries.all_entries("salex", expand_plugins=False), first_entry, last_entry),
+            desc="Reading entries",
+        )
     )
-)
-#entries = [e for e in entries if e.entry["ortografi"] == "hiphoppare"]
-inflection = Inflection(entry_queries, entries)
-entries_by_id = {entry.id: entry for entry in entries}
-ids = {}
 
-warnings = []
-warnings += test_saol_missing(entries, inflection=inflection)
-warnings += test_böjningar(entries, inflection=inflection)
-warnings += test_references(entries, inflection=inflection, ids=ids)
-warnings += test_field_info(resource_config, entries)
-warnings += test_ordled_agreement(entries)
-warnings += test_funny_characters(entries)
-warnings += test_mismatched_brackets_etc(entries)
-warnings += test_examples(entries, inflection=inflection)
-warnings += test_inflection_class_vs_inflection(entries)
-test_reports = make_test_reports(warnings)
-write_test_reports_excel(top_dir / "results", test_reports)
-write_test_reports_html(top_dir / "results", test_reports)
+    if words is not None:
+        entries = [e for e in entries if e.entry["ortografi"] in words]
+
+    inflection = Inflection(entry_queries, entries)
+    entries_by_id = {entry.id: entry for entry in entries}
+    ids = {}
+
+    tests = [
+        partial(test_saol_missing, entries, inflection=inflection),
+        partial(test_böjningar, entries, inflection=inflection),
+        partial(test_references, entries, inflection=inflection, ids=ids),
+        partial(test_field_info, resource_config, entries),
+        partial(test_ordled_agreement, entries),
+        partial(test_funny_characters, entries),
+        partial(test_mismatched_brackets_etc, entries),
+        partial(test_examples, entries, inflection=inflection),
+        partial(test_inflection_class_vs_inflection, entries),
+    ]
+
+    if test:
+        tests = [t for t in tests if test in func_name(t)]
+
+    warnings = []
+    for t in tests:
+        warnings += t()
+    test_reports = make_test_reports(warnings)
+    write_test_reports_excel(output_directory, test_reports)
+    write_test_reports_html(output_directory, test_reports)
+
+
+typer.run(main)
