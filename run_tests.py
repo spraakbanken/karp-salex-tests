@@ -19,7 +19,7 @@ from typing import Optional, Annotated
 
 
 def func_name(func):
-    if isintance(func, partial):
+    if isinstance(func, partial):
         return func_name(func.func)
     else:
         return func.__name__
