@@ -104,7 +104,7 @@ class BadReference(TestWarning):
         if self.target is not None:
             result["Hänvisar till"] = self.target
         if self.comment is not None:
-            result["Kommentar"] = self.comment
+            result["Info"] = self.comment
         return result
 
     def sort_key(self):

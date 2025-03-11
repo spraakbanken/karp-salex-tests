@@ -335,10 +335,10 @@ def write_test_reports_excel(path, test_reports):
                 worksheet = workbook.add_worksheet(worksheet_name)
                 _add_write_handlers(worksheet, style=style)
 
-                worksheet.write_row(0, 0, report.fields, style(bold=True))
+                worksheet.write_row(0, 0, ["Kommentar"] + report.fields, style(bold=True))
 
                 for i, w in enumerate(report.rows, start=1):
-                    worksheet.write_row(i, 0, w)
+                    worksheet.write_row(i, 0, [""] + w)
 
                 worksheet.autofit()
 
