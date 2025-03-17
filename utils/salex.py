@@ -235,7 +235,7 @@ ref_regexp = re.compile(r"(?<=refid=)[a-zA-Z0-9]*")
 full_ref_regexp = re.compile(r"\+\w+\(refid=([a-zA-Z0-9]*)\)")
 
 
-def parse_ref(entry, namespace, path, text):
+def parse_ref(entry, namespace, path):
     value = json.get_path(path, entry.get(namespace.path, {}))
 
     match = full_ref_regexp.fullmatch(value)
