@@ -47,6 +47,8 @@ def main(
         )
     )
 
+    entries = [e for e in entries if "ordklass" in e.entry]
+
     if words is not None:
         entries = [e for e in entries if e.entry["ortografi"] in words]
 
