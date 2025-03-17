@@ -247,6 +247,10 @@ def test_references(entries, inflection, ids=None):
                 ):
                     comment = "homografnummer saknas?"
                 elif ref in ids and not ids[ref].visible:
+                    # SAOL moderverb is allowed to point to a förrådat ord
+                    if loc.namespace == SAOL and loc.path == ["moderverb"]:
+                        continue
+
                     comment = "pekar på ett förrådat ord"
                 else:
                     comment = None
