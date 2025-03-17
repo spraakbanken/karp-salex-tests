@@ -18,7 +18,7 @@ class VariantWarning(EntryWarning):
         if self.other is not None:
             result["Ord 2"] = self.other
         if self.comment is not None:
-            result["Kommentar"] = self.comment
+            result["Info"] = self.comment
         return result
 
 def test_variantformer(entries, ids):

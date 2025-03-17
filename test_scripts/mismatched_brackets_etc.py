@@ -19,7 +19,7 @@ class MismatchedBrackets(FieldWarning):
     def to_dict(self):
         result = super().to_dict()
         if self.comment is not None:
-            result["Kommentar"] = self.comment
+            result["Info"] = self.comment
         return result
 
 
