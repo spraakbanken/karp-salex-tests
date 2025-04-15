@@ -10,6 +10,8 @@ from test_scripts.saol_missing import test_saol_missing
 from test_scripts.inflection_class_vs_inflection import test_inflection_class_vs_inflection
 from test_scripts.particle_verbs import test_particle_verbs
 from test_scripts.moderverb import test_moderverb
+from test_scripts.blanksteg import test_blanksteg
+from test_scripts.sorteringsform import test_sorteringsform
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -67,7 +69,9 @@ def main(
         partial(test_examples, entries, inflection=inflection),
         partial(test_inflection_class_vs_inflection, entries),
         partial(test_particle_verbs, entries),
-        partial(test_moderverb, entries, ids=ids)
+        partial(test_moderverb, entries, ids=ids),
+        partial(test_blanksteg, entries),
+        partial(test_sorteringsform, entries)
     ]
 
     if test:
