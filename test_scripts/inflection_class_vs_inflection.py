@@ -1,6 +1,6 @@
 from tqdm import tqdm
 from collections import Counter, defaultdict
-from utils.salex import is_visible, EntryWarning, SAOL, parse_böjning, entry_name
+from utils.salex import is_visible, EntryWarning, SAOL, parse_böjning, entry_name, entry_sort_key
 from utils.testing import markup_cell
 from dataclasses import dataclass
 import re
@@ -25,7 +25,7 @@ class SuspiciousInflection(EntryWarning):
         }
 
     def sort_key(self):
-        return (self.inflection_class, self.entry.entry["ortografi"], entry_name(self.entry, self.namespace))
+        return (self.inflection_class, entry_sort_key(self.entry, self.namespace))
 
 
 def test_inflection_class_vs_inflection(entries):

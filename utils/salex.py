@@ -399,6 +399,9 @@ class EntryWarning(TestWarning):
             result["Ordbok"] = self.namespace
         return result
 
+    def sort_key(self):
+        return entry_sort_key(self.entry, self.namespace)
+
 
 @dataclass(frozen=True)
 class FieldWarning(EntryWarning):
@@ -415,6 +418,9 @@ class FieldWarning(EntryWarning):
             "Fält": json.path_str(self.path, strip_positions=True),
             "Text": highlight(self.highlight, json.get_path(path, self.entry.entry)),
         }
+
+def entry_sort_key(entry, namespace):
+    return (entry.entry["ortografi"], entry_name(entry, namespace))
 
 
 def parse_böjning(entry, namespace, only_alpha=True):

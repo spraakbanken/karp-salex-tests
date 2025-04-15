@@ -18,6 +18,7 @@ from utils.salex import (
     no_refid_fields,
     id_fields,
     find_refs_in_namespace,
+    entry_sort_key,
 )
 from utils.testing import highlight
 from dataclasses import dataclass
@@ -110,8 +111,7 @@ class BadReference(TestWarning):
     def sort_key(self):
         return (
             self.location.field,
-            self.location.entry.entry["ortografi"],
-            entry_name(self.location.entry, self.location.namespace),
+            entry_sort_key(self.location.entry, self.location.namespace)
         )
 
 
@@ -135,8 +135,7 @@ class BadReferenceSyntax(TestWarning):
     def sort_key(self):
         return (
             self.location.field,
-            self.location.entry.entry["ortografi"],
-            entry_name(self.entry, self.location.namespace),
+            entry_sort_key(self.location.entry, self.location.namespace)
         )
 
 
