@@ -142,6 +142,8 @@ class BadReferenceSyntax(TestWarning):
 def test_references(entries, inflection, ids=None):
     if ids is None:
         ids = {}
+
+    all_ids = defaultdict(list)
     by_ortografi: dict[tuple[Namespace, str], list[Id]] = defaultdict(list)
     by_ortografi_extra: set[tuple[Namespace, str]] = set()
 
@@ -166,17 +168,21 @@ def test_references(entries, inflection, ids=None):
                     pass
                 elif not (id.type == TEXT and id.id.homografNr is None):  # missing homografNr are caught below
                     yield DuplicateId(entry=ids[id].entry, entry2=e, id=id)
+                else:
+                    all_ids[id].append(source)
 
             else:
                 ids[id] = source
+                all_ids[id].append(source)
 
     # Populate index by ortografi/homografNr
-    for id, source in ids.items():
-        if id.type == TEXT and source.visible:
-            by_ortografi[id.namespace, id.id.ortografi].append(id)
+    for id, sources in all_ids.items():
+        for source in sources:
+            if id.type == TEXT and source.visible:
+                by_ortografi[id.namespace, id.id.ortografi].append(id)
 
-            for form in inflection.inflected_forms(e, id.id.ortografi):
-                by_ortografi_extra.add(form)
+                for form in inflection.inflected_forms(e, id.id.ortografi):
+                    by_ortografi_extra.add(form)
 
     # Check for missing or unnecessary homografNr
     for (namespace, ortografi), homograf_ids in by_ortografi.items():
