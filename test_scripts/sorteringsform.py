@@ -7,7 +7,7 @@ class SorteringsFormWarning(EntryWarning):
     sorteringsform: str
 
     def category(self):
-        return f"Sorteringsformar"
+        return f"Sorteringsformer"
 
     def to_dict(self):
         return super().to_dict(include_ordbok=False) | {"Sorteringsform": self.sorteringsform}
@@ -22,7 +22,7 @@ def replace(x):
     return x
 
 def test_sorteringsform(entries):
-    for entry in tqdm(entries, desc="Checking sorteringsform"):
+    for entry in tqdm(entries, desc="Checking sorteringsformer"):
         sorteringsform = entry.entry.get("sorteringsform")
         word = entry.entry.get("ortografi")
 
