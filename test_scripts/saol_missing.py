@@ -25,7 +25,7 @@ def test_saol_missing(entries, inflection):
     for entry in tqdm(entries, desc="Finding SO entries not in SAOL"):
         entry = deepcopy(entry)
         for namespace, other_namespace in [(SAOL, SO), (SO, SAOL)]:
-            if namespace.path in entry.entry and is_visible(namespace.path, entry.entry):
+            if namespace.path in entry.entry and (is_visible(namespace.path, entry.entry) if namespace == SO else True):
                 word_class = entry.entry["ordklass"]
                 lemmas[namespace][entry.entry["ortografi"]].append(entry)
 
