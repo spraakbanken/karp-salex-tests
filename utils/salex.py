@@ -154,8 +154,15 @@ ref_fields = {
     SAOL: {
         "moderverb": LNR,
         # "variantformer.id": LNR,
-        # "enbartDigitalaHänvisningar.hänvisning": None, this is in +refid(...) form
-        # "huvudbetydelser.hänvisning": None, this is in +refid(...) form
+    },
+}
+
+refid_ref_fields = {
+    SO: {},
+    SAOL: {
+        "huvudlemma",
+        "enbartDigitalaHänvisningar.hänvisning",
+        "huvudbetydelser.hänvisningar.hänvisning",
     },
 }
 
@@ -418,6 +425,7 @@ class FieldWarning(EntryWarning):
             "Fält": json.path_str(self.path, strip_positions=True),
             "Text": highlight(self.highlight, json.get_path(path, self.entry.entry)),
         }
+
 
 def entry_sort_key(entry, namespace):
     return (entry.entry["ortografi"], entry_name(entry, namespace))

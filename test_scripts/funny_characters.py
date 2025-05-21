@@ -35,12 +35,16 @@ class CharacterCount(TestWarning):
 @dataclass(frozen=True)
 class FunnyCharacter(FieldWarning):
     funny_characters: list[str]
+    html: bool
 
     def collection(self):
-        return "Teckenstatistik"
+        if self.html:
+            return "Teckenstatistik"
+        else:
+            return "Testrapporter"
 
     def category(self):
-        return "Ovanliga tecken"
+        return "Specialtecken"
 
     def to_dict(self):
         info = ", ".join(describe_char(chr) for chr in self.funny_characters)
@@ -57,6 +61,9 @@ def test_funny_characters(entries):
     counter = Counter()
     for entry in tqdm(entries, desc="Finding funny characters"):
         for path in json.all_paths(entry.entry):
+            if "fonetikparentes" in path:
+                continue
+
             if not is_visible(path, entry.entry):
                 continue
             value = json.get_path(path, entry.entry)
@@ -64,6 +71,7 @@ def test_funny_characters(entries):
                 continue
 
             funny_chars = set()
+            html = False
             for x in value:
                 if not x.isalnum():
                     counter[x] += 1
@@ -73,10 +81,11 @@ def test_funny_characters(entries):
             for match in html_entity_re.finditer(value):
                 funny_chars.add(match.group(0))
                 counter[match.group(0)] += 1
+                html = True
 
             funny_chars = list(funny_chars)
             if funny_chars:
-                yield FunnyCharacter(entry, None, path, funny_chars, funny_chars)
+                yield FunnyCharacter(entry, None, path, funny_chars, funny_chars, html)
 
     for x, value in counter.most_common():
         yield CharacterCount(x, value)

@@ -196,7 +196,7 @@ def highlight(part, text, case_sensitive=True):
             if matches:
                 return min(matches)
         else:
-            assert False
+            assert False, f"unrecognised type {type(part)} {part} {text}"
 
     parts = []
     while True:

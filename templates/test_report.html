@@ -16,7 +16,7 @@
     {% for title in test_reports %}
     <li><a href="#test{{loop.index}}">{{title}}</a>
     {% endfor %}
-    </il>
+    </ol>
 
     {% for title, test_report in test_reports.items() %}
     <a name="test{{loop.index}}">

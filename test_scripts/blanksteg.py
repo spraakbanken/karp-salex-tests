@@ -17,11 +17,13 @@ class Blanksteg(FieldWarning):
 
 
 def test_blanksteg(entries):
-    for entry in tqdm(entries, desc="Checking ortografi"):
+    for entry in tqdm(entries, desc="Checking spaces"):
         for path in json.all_paths(entry.entry):
-            if not is_visible(path, entry.entry): continue
+            if not is_visible(path, entry.entry):
+                continue
             value = json.get_path(path, entry.entry)
-            if not isinstance(value, str): continue
+            if not isinstance(value, str):
+                continue
 
             if path[0] == "so":
                 namespace = SO
@@ -32,5 +34,5 @@ def test_blanksteg(entries):
             else:
                 namespace = None
 
-            if value.strip().replace("  ", " ") != value:
+            if value.strip().replace("  ", " ") != value.removesuffix("\n"):
                 yield Blanksteg(entry, namespace, path, None)

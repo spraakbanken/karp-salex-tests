@@ -19,6 +19,7 @@ from utils.salex import (
     id_fields,
     find_refs_in_namespace,
     entry_sort_key,
+    refid_ref_fields,
 )
 from utils.testing import highlight
 from dataclasses import dataclass
@@ -109,10 +110,7 @@ class BadReference(TestWarning):
         return result
 
     def sort_key(self):
-        return (
-            self.location.field,
-            entry_sort_key(self.location.entry, self.location.namespace)
-        )
+        return (self.location.field, entry_sort_key(self.location.entry, self.location.namespace))
 
 
 @dataclass(frozen=True)
@@ -133,10 +131,7 @@ class BadReferenceSyntax(TestWarning):
         return result
 
     def sort_key(self):
-        return (
-            self.location.field,
-            entry_sort_key(self.location.entry, self.location.namespace)
-        )
+        return (self.location.field, entry_sort_key(self.location.entry, self.location.namespace))
 
 
 def test_references(entries, inflection, ids=None):
@@ -261,9 +256,10 @@ def test_references(entries, inflection, ids=None):
                     comment = None
                 yield BadReference(loc, ref, ids.get(ref), comment)
 
-        # Check +hund(refid=lnr123456)-style references
         for namespace in [SO, SAOL]:
             body = entry.entry.get(namespace.path, {})
+
+            # Check +hund(refid=lnr123456)-style references
             for path in json.all_paths(body):
                 if not is_visible(path, body):
                     continue
@@ -316,8 +312,19 @@ def test_references(entries, inflection, ids=None):
 
                     # Check to see if we find it as an inflected form
                     if word not in [
-                        form for w in [target_word, *variants] for form in inflection.inflected_forms(target_entry, w)
+                        form
+                        for w in [target_word, *variants]
+                        for form in [w]  # inflection.inflected_forms(target_entry, w)
                     ]:
                         # TODO: report mistakenly pointing at variant
                         # form as a minor error?
                         yield BadReference(loc, id, ids.get(id), f"pekar inte på {word}")
+
+            # Check fields that use +refid-syntax for references
+            for field in refid_ref_fields[namespace]:
+                for path in json.expand_path(field, body):
+                    value = json.get_path(path, body)
+
+                    if not isinstance(value, str) or not refid_re.fullmatch(value):
+                        loc = IdLocation(entry, namespace, path, value)
+                        yield BadReferenceSyntax(entry, loc, value)

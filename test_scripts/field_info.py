@@ -1,6 +1,7 @@
 from collections import Counter
 from dataclasses import dataclass
 from utils.testing import TestWarning
+from utils.salex import visible_part
 
 
 @dataclass
@@ -27,7 +28,9 @@ def resource_statistics(resource_config, entries):
     total_counts = Counter()
 
     for entry in entries:
-        count_frequency([], resource_config.entry_field_config(), entry.entry, present_counts, total_counts)
+        count_frequency(
+            [], resource_config.entry_field_config(), visible_part(entry.entry), present_counts, total_counts
+        )
 
     for field, total_count in total_counts.items():
         present_count = present_counts[field]
