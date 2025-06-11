@@ -8,7 +8,7 @@ class SorteringsFormWarning(EntryWarning):
     sorteringsform: str
 
     def category(self):
-        return f"Sorteringsformer"
+        return "Sorteringsformer"
 
     def to_dict(self):
         return super().to_dict(include_ordbok=False) | {"Sorteringsform": self.sorteringsform}
@@ -51,7 +51,7 @@ def test_sorteringsform(entries):
         word = entry.entry.get("ortografi")
 
         if not sorteringsform:
-            yield SorteringsFormWarning(entry, SAOL, f"sorteringsform saknas")
+            yield SorteringsFormWarning(entry, SAOL, "sorteringsform saknas")
             continue
 
         if not entry.entry.get("so", {}).get("visas") and not entry.entry.get("saol", {}).get("visas"):

@@ -96,10 +96,10 @@ def style_to_html(style, end=False):
         tags.append("i")
     if style.small:
         tags.append("small")
+    if style.superscript:
+        tags.append("sup")
     if style.subscript:
         tags.append("sub")
-    if style.subscript:
-        tags.append("sup")
 
     result = []
     if end:

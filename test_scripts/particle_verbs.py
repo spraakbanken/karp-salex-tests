@@ -87,7 +87,7 @@ def test_particle_verbs(entries):
                     word = word[: -len(p) - 1]
 
         if not sorteringsform:
-            yield ParticleVerbWarning(entry, SAOL, f"sorteringsform saknas")
+            yield ParticleVerbWarning(entry, SAOL, "sorteringsform saknas")
 
         if sorteringsform and orig_word != sorteringsform:
             yield ParticleVerbWarning(entry, SAOL, f"misstänkt sorteringsform: {sorteringsform}")

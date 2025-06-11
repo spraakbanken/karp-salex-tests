@@ -2,6 +2,7 @@ from utils.salex import SAOL, SO, FieldWarning, is_visible
 from dataclasses import dataclass
 from tqdm import tqdm
 from karp.foundation import json
+from utils.markup_parser import strip_markup
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,8 @@ def test_blanksteg(entries):
                 path = path[1:]
             else:
                 namespace = None
+
+            value = strip_markup(value)
 
             if value.strip().replace("  ", " ") != value.removesuffix("\n"):
                 yield Blanksteg(entry, namespace, path, None)

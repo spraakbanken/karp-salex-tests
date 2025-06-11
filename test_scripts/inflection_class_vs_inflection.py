@@ -1,6 +1,6 @@
 from tqdm import tqdm
 from collections import Counter, defaultdict
-from utils.salex import is_visible, EntryWarning, SAOL, parse_böjning, entry_name, entry_sort_key
+from utils.salex import is_visible, EntryWarning, SAOL, parse_böjning, entry_sort_key
 from utils.testing import markup_cell
 from dataclasses import dataclass
 import re

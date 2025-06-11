@@ -9,7 +9,7 @@ class InflectionClassMismatch(EntryWarning):
     moderverb: EntryDto
 
     def category(self):
-        return f"Ptv rxv böjningsklass (SAOL)"
+        return "Ptv rxv böjningsklass (SAOL)"
 
     def to_dict(self):
         return super().to_dict(include_ordbok=False) | {

@@ -3,7 +3,6 @@ from collections import defaultdict
 from utils.salex import (
     find_ids,
     find_refs,
-    entry_name,
     is_visible,
     SO,
     SAOL,
