@@ -127,6 +127,17 @@ tgrep = ["pyparsing"]
 twitter = ["twython"]
 
 [[package]]
+name = "parsy"
+version = "2.1"
+description = "Easy-to-use parser combinators, for parsing in pure Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "parsy-2.1-py3-none-any.whl", hash = "sha256:8f18e7b11985e7802e7e3ecbd8291c6ca243d29820b1186e4c84605db4efffa0"},
+    {file = "parsy-2.1.tar.gz", hash = "sha256:fd5dd18d7b0b61f8275ee88665f430a20c02cf5a82d88557f35330530186d7ac"},
+]
+
+[[package]]
 name = "pygments"
 version = "2.19.1"
 description = "Pygments is a syntax highlighting package written in Python."
@@ -336,4 +347,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">= 3.10"
-content-hash = "e5aed6cee6d1bc33338f212c567794132147d3e5e6d8a132d6195b8598ca1dab"
+content-hash = "aca474ac8eda97b6be20428982ce745b0bc8c4c2ee93936f7e769eb1763b9fac"

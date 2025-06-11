@@ -12,6 +12,8 @@ from test_scripts.particle_verbs import test_particle_verbs
 from test_scripts.moderverb import test_moderverb
 from test_scripts.blanksteg import test_blanksteg
 from test_scripts.sorteringsform import test_sorteringsform
+from test_scripts.uttal import test_uttal
+from test_scripts.uttal_grammar import test_uttal_grammar
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -71,7 +73,9 @@ def main(
         partial(test_particle_verbs, entries),
         partial(test_moderverb, entries, ids=ids),
         partial(test_blanksteg, entries),
-        partial(test_sorteringsform, entries)
+        partial(test_sorteringsform, entries),
+        partial(test_uttal, entries),
+        partial(test_uttal_grammar, entries),
     ]
 
     if test:
