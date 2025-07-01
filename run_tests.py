@@ -14,6 +14,7 @@ from test_scripts.blanksteg import test_blanksteg
 from test_scripts.sorteringsform import test_sorteringsform
 from test_scripts.uttal import test_uttal
 from test_scripts.uttal_grammar import test_uttal_grammar
+from test_scripts.empty_entries import test_empty_entries
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -76,6 +77,7 @@ def main(
         partial(test_sorteringsform, entries),
         partial(test_uttal, entries),
         partial(test_uttal_grammar, entries),
+        partial(test_empty_entries, entries),
     ]
 
     if test:
