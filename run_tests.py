@@ -1,4 +1,4 @@
-from utils.testing import write_test_reports_excel, write_test_reports_html, make_test_reports
+from utils.testing import write_test_reports_excel, write_test_reports_html, make_test_reports, read_test_reports_excel, replace_comments
 from test_scripts.ordled_agreement import test_ordled_agreement
 from test_scripts.references import test_references
 from test_scripts.funny_characters import test_funny_characters
@@ -41,6 +41,7 @@ def main(
     last_entry: Annotated[Optional[int], typer.Option(help="number of last entry to test", show_default="all")] = None,
     words: Annotated[Optional[list[str]], typer.Option(help="which words to test", show_default="all")] = None,
     test: Annotated[Optional[str], typer.Option(help="which test to run", show_default="all")] = None,
+    old_report: Annotated[Optional[str], typer.Option(help="old test report for comments", show_default="all")] = None,
 ):
     output_directory.mkdir(exist_ok=True)
 
@@ -87,6 +88,11 @@ def main(
     for t in tests:
         warnings += t()
     test_reports = make_test_reports(warnings)
+
+    if old_report:
+        old_test_reports = read_test_reports_excel(old_report)
+        replace_comments(test_reports, {"Testrapporter": old_test_reports})
+
     write_test_reports_excel(output_directory, test_reports)
     write_test_reports_html(output_directory, test_reports)
 

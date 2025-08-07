@@ -16,6 +16,8 @@ from utils import markup_parser
 import lark
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import html
+from openpyxl import load_workbook
+from frozendict import frozendict
 
 
 class TestWarning:
@@ -165,6 +167,9 @@ class _RichString:
 
         return "".join(result)
 
+    def render_text(self):
+        return "".join(x for x in self.parts if isinstance(x, str))
+
 
 add_write_class(_RichString)
 
@@ -257,6 +262,9 @@ class _Link:
     def render_html(self):
         return f'<a href="{html.escape(self.url)}">{render_html(self.text)}</a>'
 
+    def render_text(self):
+        return self.text
+
 
 add_write_class(_Link)
 
@@ -296,7 +304,7 @@ def make_test_report(warnings) -> TestReport:
     warnings.sort(key=lambda w: (type(w).__name__, w.sort_key()))
     warnings = [w.to_dict() for w in warnings]
 
-    fields = []
+    fields = ["Kommentar"]
     for w in warnings:
         fields += [f for f in w.keys() if f not in fields]
 
@@ -325,6 +333,48 @@ def make_test_reports(warnings) -> dict[str, dict[str, TestReport]]:
     }
 
 
+def read_test_reports_excel(path) -> dict[str, TestReport]:
+    result = {}
+    wb = load_workbook(path)
+    for sheet in wb.worksheets:
+        rows = sheet.rows
+        header = next(rows)
+        cells = list(rows)
+        result[sheet.title] = TestReport(
+            fields = [cell.value for cell in header],
+            rows = [[cell.value for cell in row] for row in cells]
+        )
+    return result
+
+
+def replace_comments(test_reports, test_report_comments):
+    def get_key_and_comment(fields, row):
+        key = dict(zip(fields, [render_text(cell) for cell in row]))
+        comment = key.get("Kommentar")
+        key["Kommentar"] = None
+        return frozendict(key), comment
+
+    for collection, reports in test_reports.items():
+        for category, report in reports.items():
+            comments = test_report_comments.get(collection, {}).get(category)
+            if not comments: continue
+
+            by_key = {}
+            for row in comments.rows:
+                key, comment = get_key_and_comment(comments.fields, row)
+                by_key[key] = comment
+
+            comment_index = report.fields.index("Kommentar")
+            for row in report.rows:
+                if comment_index not in range(len(row)): continue
+
+                key, _ = get_key_and_comment(report.fields, row)
+                comment = by_key.get(key)
+                if comment is not None and "fixa" in comment.lower():
+                    print("*** not fixed", collection, category, key, comment)
+                
+                row[comment_index] = comment
+
 def write_test_reports_excel(path, test_reports):
     for bookname, by_worksheet in test_reports.items():
         with xlsxwriter.Workbook(Path(path) / (bookname + ".xlsx")) as workbook:
@@ -334,10 +384,10 @@ def write_test_reports_excel(path, test_reports):
                 worksheet = workbook.add_worksheet(worksheet_name)
                 _add_write_handlers(worksheet, style=style)
 
-                worksheet.write_row(0, 0, ["Kommentar"] + report.fields, style(bold=True))
+                worksheet.write_row(0, 0, report.fields, style(bold=True))
 
                 for i, w in enumerate(report.rows, start=1):
-                    worksheet.write_row(i, 0, [""] + w)
+                    worksheet.write_row(i, 0, w)
 
                 worksheet.autofit()
 
@@ -356,6 +406,17 @@ def render_html(value):
         return value.render_html()
     else:
         return render_html(str(value))
+
+
+def render_text(value):
+    if isinstance(value, str):
+        return value
+    elif type(value) in _write_vias:
+        return render_text(_write_vias[type(value)](value))
+    elif type(value) in _write_classes:
+        return value.render_text()
+    else:
+        return str(value)
 
 
 def write_test_reports_html(path, test_reports):
