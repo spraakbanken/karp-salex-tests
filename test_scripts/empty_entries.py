@@ -1,4 +1,4 @@
-from utils.salex import SAOL, EntryWarning, visible_part, is_visible
+from utils.salex import SAOL, EntryWarning, visible_part
 from dataclasses import dataclass
 from karp.foundation import json
 from tqdm import tqdm

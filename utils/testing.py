@@ -341,8 +341,7 @@ def read_test_reports_excel(path) -> dict[str, TestReport]:
         header = next(rows)
         cells = list(rows)
         result[sheet.title] = TestReport(
-            fields = [cell.value for cell in header],
-            rows = [[cell.value for cell in row] for row in cells]
+            fields=[cell.value for cell in header], rows=[[cell.value for cell in row] for row in cells]
         )
     return result
 
@@ -357,7 +356,8 @@ def replace_comments(test_reports, test_report_comments):
     for collection, reports in test_reports.items():
         for category, report in reports.items():
             comments = test_report_comments.get(collection, {}).get(category)
-            if not comments: continue
+            if not comments:
+                continue
 
             by_key = {}
             for row in comments.rows:
@@ -366,14 +366,16 @@ def replace_comments(test_reports, test_report_comments):
 
             comment_index = report.fields.index("Kommentar")
             for row in report.rows:
-                if comment_index not in range(len(row)): continue
+                if comment_index not in range(len(row)):
+                    continue
 
                 key, _ = get_key_and_comment(report.fields, row)
                 comment = by_key.get(key)
                 if comment is not None and "fixa" in comment.lower():
                     print("*** not fixed", collection, category, key, comment)
-                
+
                 row[comment_index] = comment
+
 
 def write_test_reports_excel(path, test_reports):
     for bookname, by_worksheet in test_reports.items():

@@ -1,4 +1,10 @@
-from utils.testing import write_test_reports_excel, write_test_reports_html, make_test_reports, read_test_reports_excel, replace_comments
+from utils.testing import (
+    write_test_reports_excel,
+    write_test_reports_html,
+    make_test_reports,
+    read_test_reports_excel,
+    replace_comments,
+)
 from test_scripts.ordled_agreement import test_ordled_agreement
 from test_scripts.references import test_references
 from test_scripts.funny_characters import test_funny_characters
