@@ -21,6 +21,7 @@ from test_scripts.sorteringsform import test_sorteringsform
 from test_scripts.uttal import test_uttal
 from test_scripts.uttal_grammar import test_uttal_grammar
 from test_scripts.empty_entries import test_empty_entries
+from test_scripts.böjningar_first_form import test_böjningar_first
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -77,7 +78,7 @@ def main(
         partial(test_funny_characters, entries),
         partial(test_mismatched_brackets_etc, entries),
         partial(test_examples, entries, inflection=inflection),
-        partial(test_inflection_class_vs_inflection, entries),
+        partial(test_inflection_class_vs_inflection, inflection, entries),
         partial(test_particle_verbs, entries),
         partial(test_moderverb, entries, ids=ids),
         partial(test_blanksteg, entries),
@@ -85,6 +86,7 @@ def main(
         partial(test_uttal, entries),
         partial(test_uttal_grammar, entries),
         partial(test_empty_entries, entries),
+        partial(test_böjningar_first, inflection, entries),
     ]
 
     if test:

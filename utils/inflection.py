@@ -32,7 +32,7 @@ class Inflection:
 
         self.extra_inflection_classes = {k: v for k, v in saol.items() if k in so}
 
-    def inflected_forms(self, entry, word=None):
+    def inflected_forms(self, entry, word=None, tag=False):
         headword = entry.entry["ortografi"]
         word_class = entry.entry["ordklass"]
         if word_class == "ptv.":
@@ -47,6 +47,10 @@ class Inflection:
         for inflection_class in inflection_classes:
             for case in self.inflection_rules.get(inflection_class, []):
                 try:
-                    yield apply_rules(word, case["rules"])
+                    applied = apply_rules(word, case["rules"])
+                    if tag:
+                        yield (case["tagg"], applied)
+                    else:
+                        yield applied
                 except RuleNotPossible:
                     pass
