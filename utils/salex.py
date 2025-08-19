@@ -32,14 +32,12 @@ def is_visible(path, entry, test=entry_is_visible):
 
 
 def trim_invisible(data, test=entry_is_visible):
-    paths = list(json.all_paths(data))  # compute up front since we will be modifying data
-    for path in paths:
-        if not json.has_path(path, data):
-            continue  # already deleted
-
-        value = json.get_path(path, data)
+    def pred(path, value):
         if isinstance(value, dict) and not test(value):
-            json.del_path(path, data)
+            return False
+        return True
+
+    return json.filter_paths(pred, data)
 
 
 def visible_part(data, test=entry_is_visible):

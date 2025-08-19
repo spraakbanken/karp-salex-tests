@@ -1,5 +1,4 @@
-from utils.salex import EntryWarning, SAOL, SO, parse_böjning, is_visible, variant_forms, visible_part
-from utils.testing import markup_cell
+from utils.salex import EntryWarning, SAOL, visible_part
 from tqdm import tqdm
 from dataclasses import dataclass
 

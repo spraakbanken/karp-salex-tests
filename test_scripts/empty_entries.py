@@ -9,7 +9,7 @@ class EmptyEntryWarning(EntryWarning):
     present: list[str]
 
     def category(self):
-        return f"tomma ingångar ({self.namespace})"
+        return f"Tomma ingångar ({self.namespace})"
 
     def to_dict(self):
         result = super().to_dict()
@@ -20,6 +20,8 @@ class EmptyEntryWarning(EntryWarning):
 
 def test_empty_entries(entries):
     for entry in tqdm(entries, desc="Finding empty entries"):
+        if entry.entry["ortografi"] == "jag": breakpoint()
+
         body = visible_part(entry.entry)
 
         for path in json.expand_path("saol.huvudbetydelser", body):

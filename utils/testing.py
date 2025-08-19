@@ -35,6 +35,9 @@ class TestWarning:
     def sort_key(self) -> tuple[str, ...]:
         return ()
 
+    def extra_fields(self) -> set[str]:
+        return set()
+
 
 def diff_warnings(tester, w1, w2):
     identifiers = {tester.info.identifier(w) for w in w2}
@@ -297,22 +300,25 @@ def make_styler(workbook):
 @dataclass
 class TestReport:
     fields: list[str]
+    extra_fields: list[str]
     rows: list[list[object]]
 
 
 def make_test_report(warnings) -> TestReport:
     warnings.sort(key=lambda w: (type(w).__name__, w.sort_key()))
-    warnings = [w.to_dict() for w in warnings]
 
     fields = ["Kommentar"]
+    extra_fields = ["Kommentar"]
     for w in warnings:
-        fields += [f for f in w.keys() if f not in fields]
+        fields += [f for f in w.to_dict().keys() if f not in fields]
+        extra_fields += [f for f in w.extra_fields() if f not in extra_fields]
 
     rows = []
     for w in warnings:
+        w = w.to_dict()
         rows.append([w.get(field) for field in fields])
 
-    return TestReport(fields=fields, rows=rows)
+    return TestReport(fields=fields, extra_fields=extra_fields, rows=rows)
 
 
 def make_test_reports(warnings) -> dict[str, dict[str, TestReport]]:
@@ -341,16 +347,17 @@ def read_test_reports_excel(path) -> dict[str, TestReport]:
         header = next(rows)
         cells = list(rows)
         result[sheet.title] = TestReport(
-            fields=[cell.value for cell in header], rows=[[cell.value for cell in row] for row in cells]
+            fields=[cell.value for cell in header], extra_fields=[], rows=[[cell.value for cell in row] for row in cells]
         )
     return result
 
 
 def replace_comments(test_reports, test_report_comments):
-    def get_key_and_comment(fields, row):
+    def get_key_and_comment(fields, extra_fields, row):
         key = dict(zip(fields, [render_text(cell) for cell in row]))
         comment = key.get("Kommentar")
-        key["Kommentar"] = None
+        for field in list(extra_fields):
+            key[field] = None
         return frozendict(key), comment
 
     for collection, reports in test_reports.items():
@@ -361,7 +368,7 @@ def replace_comments(test_reports, test_report_comments):
 
             by_key = {}
             for row in comments.rows:
-                key, comment = get_key_and_comment(comments.fields, row)
+                key, comment = get_key_and_comment(comments.fields, report.extra_fields, row)
                 by_key[key] = comment
 
             comment_index = report.fields.index("Kommentar")
@@ -369,7 +376,7 @@ def replace_comments(test_reports, test_report_comments):
                 if comment_index not in range(len(row)):
                     continue
 
-                key, _ = get_key_and_comment(report.fields, row)
+                key, _ = get_key_and_comment(report.fields, report.extra_fields, row)
                 comment = by_key.get(key)
                 if comment is not None and "fixa" in comment.lower():
                     print("*** not fixed", collection, category, key, comment)
