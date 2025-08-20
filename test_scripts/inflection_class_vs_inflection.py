@@ -126,8 +126,8 @@ def test_inflection_class_vs_inflection(inflection, entries):
                     continue
                 if not is_visible(namespace.path, entry.entry):
                     continue
-                if entry.entry.get("ingångstyp") in ["se under", "variant", "reflexivt_verb", "partikelverb"]:
-                    continue
+                #if entry.entry.get("ingångstyp") in ["se under", "variant", "reflexivt_verb", "partikelverb"]:
+                #    continue
 
                 inflection_desc = get_inflection(inflection, entry, namespace)
                 inflection_counts[inflection_desc] += 1
