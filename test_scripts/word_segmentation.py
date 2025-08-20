@@ -91,6 +91,7 @@ class SortedSet:
                 yield self.items[i]
 
 def base_morphemes(morpheme):
+    if morpheme.endswith("s") and not morpheme.endswith("ss"): morpheme = morpheme[:-1]
     yield morpheme
     #if morpheme.endswith("s"): yield morpheme[:-1]
 
