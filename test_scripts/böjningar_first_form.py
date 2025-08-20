@@ -26,9 +26,14 @@ def test_böjningar_first(inflection, entries):
         if "saol" not in entry.entry: continue
 
         word = entry.entry.get("ortografi")
-        inflection_table = list(inflection.inflected_forms(entry))
+        inflected_forms = list(inflection.inflected_forms(entry, tag=True))
+        inflection_table = {tag: form for tag, form in inflected_forms}
         if not inflection_table: continue
-        form = inflection_table[0]
+
+        try:
+            form = inflection_table.get("V0N0A") or inflection_table["V0N0D"]
+        except:
+            form = inflected_forms[0][1]
 
         if word != form:
             yield InflectionWarning(entry, SAOL, form)
