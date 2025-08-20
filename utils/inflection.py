@@ -40,6 +40,13 @@ class Inflection:
 
         if word is None:
             word = headword
+
+        if entry.entry["ingångstyp"] in ["partikelverb", "reflexivt_verb"]:
+            suffix = word.split()[1:]
+            word = word.split()[0]
+        else:
+            suffix = []
+
         inflection_classes = {entry.entry.get("böjningsklass")}
         inflection_classes.update(self.extra_inflection_classes.get((word, word_class), set()))
         inflection_classes.update(self.extra_inflection_classes.get((headword, word_class), set()))
@@ -48,9 +55,10 @@ class Inflection:
             for case in self.inflection_rules.get(inflection_class, []):
                 try:
                     applied = apply_rules(word, case["rules"])
+                    glued = " ".join([applied] + suffix)
                     if tag:
-                        yield (case["tagg"], applied)
+                        yield (case["tagg"], glued)
                     else:
-                        yield applied
+                        yield glued
                 except RuleNotPossible:
                     pass
