@@ -5,7 +5,7 @@ from utils.testing import (
     read_test_reports_excel,
     replace_comments,
 )
-from test_scripts.ordled_agreement import test_ordled_agreement
+from test_scripts.ordled_agreement import test_ordled_agreement, test_ordled_format
 from test_scripts.references import test_references
 from test_scripts.funny_characters import test_funny_characters
 from test_scripts.mismatched_brackets_etc import test_mismatched_brackets_etc
@@ -75,6 +75,7 @@ def main(
         partial(test_references, entries, inflection=inflection, ids=ids),
         partial(test_field_info, resource_config, entries),
         partial(test_ordled_agreement, entries),
+        partial(test_ordled_format, entries),
         partial(test_funny_characters, entries),
         partial(test_mismatched_brackets_etc, entries),
         partial(test_examples, entries, inflection=inflection),
