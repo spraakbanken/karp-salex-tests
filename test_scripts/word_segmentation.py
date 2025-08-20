@@ -33,17 +33,25 @@ class SegmentationWarning2(EntryWarning):
     plain_morpheme: str
     notated_morpheme: str
     common_morpheme: str
-    common_morpheme_word: object
+    common_morpheme_words: list[object]
+
+    def collection(self):
+        return "Ordledstestning"
 
     def category(self):
-        return f"Segmentering 2 ({self.namespace})"
+        if "·" not in self.notated_morpheme or "·" not in self.common_morpheme:
+            return f'Punkt saknas helt'
+        elif is_subsequence(self.notated_morpheme, self.common_morpheme) or is_subsequence(self.common_morpheme, self.notated_morpheme):
+            return f'Minst en punkt saknas'
+        else:
+            return f'Avvikande punkter'
 
     def to_dict(self):
         return super().to_dict(include_ordbok=False) | {
             "Ordled": self.ordled,
-            "Morfem": self.notated_morpheme,
-            "Vanligare form": self.common_morpheme,
-            "Exempel med vanligare form": entry_cell(self.common_morpheme_word, self.namespace),
+#            "Morfem": self.notated_morpheme,
+            "Vanligare form": f"{self.common_morpheme} ({len(self.common_morpheme_words)} förekomst{'er' if len(self.common_morpheme_words)>1 else ''})",
+            "Exempel med vanligare form": entry_cell(self.common_morpheme_words[0], self.namespace),
         }
 
     def sort_key(self):
@@ -90,17 +98,28 @@ class SortedSet:
             for i in range(pos-1, -1, -1):
                 yield self.items[i]
 
-def base_morphemes(morpheme):
-    if morpheme.endswith("s") and not morpheme.endswith("ss"): morpheme = morpheme[:-1]
-    yield morpheme
-    #if morpheme.endswith("s"): yield morpheme[:-1]
+#def base_morphemes(morpheme):
+#    if morpheme.endswith("s") and not morpheme.endswith("ss"): morpheme = morpheme[:-1]
+#    yield morpheme
+#    #if morpheme.endswith("s"): yield morpheme[:-1]
+
+def is_subsequence(s1, s2):
+    i = 0
+    j = 0
+    while i < len(s1) and j < len(s2):
+        if s1[i] == s2[j]:
+            i += 1
+            j += 1
+        else:
+            j += 1
+    return i == len(s1)
 
 def strip_markup(word):
     return "".join(word_segments(word))
 
 def test_word_segmentation(entries):
     by_morpheme = defaultdict(list)
-    decorated_morphemes = defaultdict(set)
+    decorated_morphemes = defaultdict(lambda: defaultdict(list))
     by_segment = defaultdict(list)
     by_first_morpheme = defaultdict(list)
     by_last_morpheme = defaultdict(list)
@@ -123,23 +142,29 @@ def test_word_segmentation(entries):
         segments = word_segments(ordled)
 
         for m in morphemes: by_morpheme[m].append(entry)
-        for m in morphemes:
-            for mm in base_morphemes(m):
-                decorated_morphemes[strip_markup(mm)].add(mm)
+        for i, m in enumerate(morphemes):
+            if i == 0 and len(morphemes) > 1 and m.endswith("s") and not m.endswith("ss"):
+                m = m[:-1]
+                # e.g. sinn·es => sinn·e which we change to sinne
+                if len(m) > 2 and m[-2] == "·":
+                    m = m[:-2] + m[-1]
+            decorated_morphemes[strip_markup(m)][m].append(entry)
         for s in segments: by_segment[s].append(entry)
         by_first_morpheme[morphemes[0]].append(entry)
         by_last_morpheme[morphemes[-1]].append(entry)
         by_first_segment[segments[0]].append(entry)
         by_last_segment[segments[-1]].append(entry)
 
+#    breakpoint()
+
     for plain, ms in decorated_morphemes.items():
-        counts = Counter({m: len(by_morpheme[m]) for m in ms})
+        counts = Counter({m: len(es) for m, es in ms.items()})
         correct, _ = counts.most_common(1)[0]
 
-        for m in counts:
+        for m, es in ms.items():
             if m == correct: continue
-            for e in by_morpheme[m]:
-                yield SegmentationWarning2(e, SAOL, entry_ordled(e), plain, m, correct, by_morpheme[correct][0])
+            for e in es:
+                yield SegmentationWarning2(e, SAOL, entry_ordled(e), plain, m, correct, ms[correct])
 
     return
 
