@@ -176,22 +176,20 @@ def test_references(entries, inflection, ids=None):
     for id, sources in all_ids.items():
         for source in sources:
             if id.type == TEXT and source.visible:
-                by_ortografi[id.namespace, id.id.ortografi].append(id)
+                by_ortografi[id.namespace, id.id.ortografi].append(IdWithLocation(id, source))
 
                 for form in inflection.inflected_forms(e, id.id.ortografi):
                     by_ortografi_extra.add(form)
 
     # Check for missing or unnecessary homografNr
-    for (namespace, ortografi), homograf_ids in by_ortografi.items():
+    for (namespace, ortografi), homografer in by_ortografi.items():
 
         def key(id):
-            hnr = id.id.homografNr
+            hnr = id.id.id.homografNr
             return -1 if hnr is None else hnr
 
-        homograf_ids = sorted(homograf_ids, key=key)
-
-        def homografer():
-            return [IdWithLocation(id, ids[id]) for id in homograf_ids]
+        homografer.sort(key=key)
+        homograf_ids = [id.id for id in homografer]
 
         if namespace == SAOL:
             # SAOL: Certain entries don't have a homografNr, namely:
@@ -200,33 +198,36 @@ def test_references(entries, inflection, ids=None):
             # form of the word".)
             # homografNrs should be checked after removing these entries.
             unnumbered_ids = []
-            for id in homograf_ids:
-                if ids[id].entry.entry.get("ingångstyp") != "se under":
+            for homograf in homografer:
+                id = homograf.id
+                entry = homograf.loc.entry
+                if entry.entry.get("ingångstyp") != "se under":
                     continue
 
-                targets = find_refs_in_namespace(ids[id].entry, SAOL)
+                targets = find_refs_in_namespace(entry, SAOL)
                 forms = [f for ref, _ in targets for f in variant_forms(ids[ref].entry, SAOL, include_main_form=True)]
                 if id.id.ortografi not in forms:
                     unnumbered_ids.append(id)
 
             if any(id.id.homografNr is not None for id in unnumbered_ids):
-                yield HomografWrong(namespace, ortografi, homografer(), "'se under'-form har homografnummer")
+                yield HomografWrong(namespace, ortografi, homografer, "'se under'-form har homografnummer")
 
             homograf_ids = [id for id in homograf_ids if id not in unnumbered_ids]
 
         if len(homograf_ids) == 1 and homograf_ids[0].id.homografNr is not None:  # unnecessary hnr
-            yield HomografWrong(namespace, ortografi, homografer(), "onödigt homografnummer")
+            yield HomografWrong(namespace, ortografi, homografer, "onödigt homografnummer")
             continue
 
         if any(id.id.homografNr is None for id in homograf_ids):
             if len(homograf_ids) > 1:  # missing hnr
-                yield HomografWrong(namespace, ortografi, homografer(), "homografnummer saknas")
+                #if ortografi == "chip": breakpoint()
+                yield HomografWrong(namespace, ortografi, homografer, "homografnummer saknas")
 
             continue
 
         homograf_nrs = [id.id.homografNr for id in homograf_ids]
         if homograf_nrs != list(range(1, len(homograf_nrs) + 1)):  # wrong hnr
-            yield HomografWrong(namespace, ortografi, homografer(), "icke-sekventiella homografnummer")
+            yield HomografWrong(namespace, ortografi, homografer, "icke-sekventiella homografnummer")
 
     for entry in tqdm(entries, desc="Checking references"):
         for ref, loc in find_refs(entry):
