@@ -384,6 +384,27 @@ def replace_comments(test_reports, test_report_comments):
                 row[comment_index] = comment
 
 
+def remove_old_warnings(test_reports, old_test_reports):
+    def get_key(fields, extra_fields, row):
+        key = dict(zip(fields, [render_text(cell) for cell in row]))
+        for field in list(extra_fields):
+            key[field] = None
+        return frozendict(key)
+
+    for collection, reports in test_reports.items():
+        for category, report in reports.items():
+            old_report = old_test_reports.get(collection, {}).get(category)
+            if not old_report:
+                continue
+
+            old_warnings = set()
+            for row in old_report.rows:
+                key = get_key(old_report.fields, report.extra_fields, row)
+                old_warnings.add(key)
+
+            report.rows = [row for row in report.rows if get_key(report.fields, report.extra_fields, row) not in old_warnings]
+
+
 def write_test_reports_excel(path, test_reports):
     for bookname, by_worksheet in test_reports.items():
         with xlsxwriter.Workbook(Path(path) / (bookname + ".xlsx")) as workbook:
