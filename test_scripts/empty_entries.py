@@ -20,8 +20,6 @@ class EmptyEntryWarning(EntryWarning):
 
 def test_empty_entries(entries):
     for entry in tqdm(entries, desc="Finding empty entries"):
-        if entry.entry["ortografi"] == "jag": breakpoint()
-
         body = visible_part(entry.entry)
 
         for path in json.expand_path("saol.huvudbetydelser", body):
