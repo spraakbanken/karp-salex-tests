@@ -25,6 +25,7 @@ from test_scripts.empty_entries import test_empty_entries
 from test_scripts.böjningar_first_form import test_böjningar_first
 from test_scripts.unabbreviated_inflections import test_unabbreviated_inflections
 from test_scripts.word_segmentation import test_word_segmentation
+from test_scripts.variantformer import test_variantformer
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -94,6 +95,7 @@ def main(
         partial(test_böjningar_first, inflection, entries),
         partial(test_unabbreviated_inflections, entries),
         partial(test_word_segmentation, entries),
+        partial(test_variantformer, entries, ids),
     ]
 
     if test:

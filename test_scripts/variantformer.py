@@ -1,6 +1,7 @@
-from utils.salex import EntryWarning, entry_cell, VARIANT_LNR, LNR
+from utils.salex import EntryWarning, entry_cell, Id, SAOL, LNR, IdLocation, parse_ref, visible_part
 from dataclasses import dataclass
 from tqdm import tqdm
+from karp.foundation import json
 
 # TODO test variant forms
 # TODO check that no homografNr
@@ -8,36 +9,61 @@ from tqdm import tqdm
 @dataclass(frozen=True)
 class VariantWarning(EntryWarning):
     other: IdLocation | None
-    comment: str
+    comment: str | None
 
     def category(self):
         return "Variantformer"
 
     def to_dict(self):
-        result = super().to_dict()
-        if self.other is not None:
-            result["Ord 2"] = self.other
-        if self.comment is not None:
-            result["Info"] = self.comment
-        return result
+        result = super().to_dict(include_ordbok=False)
+        return {
+            "Variantlemma": result["Ord"],
+            "Huvudlemma": self.other,
+            "Info": self.comment,
+        }
 
 def test_variantformer(entries, ids):
-    for id, entry in tqdm(ids.items(), desc="Checking variant forms"):
-        if id.type == VARIANT_LNR:
-            target_id = id.replace(type=LNR)
-
-            if target_id not in ids:
-                yield VariantWarning(entry, SAOL, None,
-                continue
-
     for entry in tqdm(entries, desc="Checking variant forms"):
-        if saol_lemma := entry.entry.get("saol"):
-            if saol_lemma.get("ingångstyp") == "variant":
-                variants_by_id[saol_lemma["id"]] = entry
+        if saol_lemma := visible_part(entry.entry.get("saol")):
+            if not saol_lemma["visas"]: continue
+            if entry.entry.get("ingångstyp") == "variant":
+                if saol_lemma.get("huvudbetydelser"):
+                    yield VariantWarning(entry, SAOL, None, "variantlemmat har huvudbetydelse")
 
-            for variant_form in saol_lemma.get("variantformer", []):
-                sub_variants_by_id[variant_form["id"]] = (entry, variant_form)
+                if not "huvudlemma" in saol_lemma:
+                    yield VariantWarning(entry, SAOL, None, "huvudlemma-fältet är tomt")
+                    continue
 
-    for id, variant in variants_by_id.items():
-        if id not in sub_variants_by_id:
-            yield VariantWarning(entry, SAOL, None,
+                try:
+                    target, _ = parse_ref(entry.entry, SAOL, "huvudlemma")
+                except:
+                    yield VariantWarning(entry, SAOL, None, "parse " + saol_lemma.get("huvudlemma", ""))
+                    continue
+
+                if target not in ids:
+                    yield VariantWarning(entry, SAOL, None, "missing")
+                    continue
+
+                variant_parent = ids[target].entry.entry
+                candidate_variants = [v for v in variant_parent["saol"].get("variantformer", []) if v["ortografi"] == entry.entry["ortografi"]]
+                if len(candidate_variants) == 0:
+                    yield VariantWarning(entry, SAOL, None, "huvudlemmat har inga matchande variantformer")
+                elif len(candidate_variants) > 1:
+                    yield VariantWarning(entry, SAOL, None, "huvudlemmat har flera matchande variantformer")
+                else:
+                    variant = candidate_variants[0]
+
+                should_match = [
+                    ("ordklass", variant_parent, "ordklass"),
+                    ("ortografi", variant, "ortografi"),
+                    #("böjningsklass", variant, "böjningsklass"),
+                    ("saol.homografNr", variant, "homografNr"),
+                    ("saol.ordled", variant, "ordled")
+                ]
+
+                for path1, other, path2 in should_match:
+                    value1 = json.get_path(path1, entry.entry) if json.has_path(path1, entry.entry) else None
+                    value2 = json.get_path(path2, other) if json.has_path(path2, other) else None
+
+                    if value1 != value2:
+                        yield VariantWarning(entry, SAOL, ids[target], f"olika {path2}: {value1}, {value2}")

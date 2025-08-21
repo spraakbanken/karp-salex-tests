@@ -155,9 +155,12 @@ def test_references(entries, inflection, ids=None):
     # Read in all IDs and check for duplicates
     for e in tqdm(entries, desc="Finding IDs"):
         for id, source in find_ids(e):
+            if id.namespace == SAOL and e.entry.get("ingångstyp") == "variant": continue
+            #if id.type == TEXT and id.id.homografNr == 3: breakpoint()
             if id in ids:
                 if better(id, source, ids[id]):
                     ids[id] = source
+                    all_ids[id].append(source)
                 elif better(id, ids[id], source):
                     pass
                 elif not (id.type == TEXT and id.id.homografNr is None):  # missing homografNr are caught below

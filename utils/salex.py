@@ -237,7 +237,7 @@ def parse_refid(kind, ref):
 
 text_xnr_regexp = re.compile(r"(.*)\s+([0-9]+)")
 ref_regexp = re.compile(r"(?<=refid=)[a-zA-Z0-9]*")
-full_ref_regexp = re.compile(r"\+\w+\(refid=([a-zA-Z0-9]*)\)")
+full_ref_regexp = re.compile(r"\+[^ +]+\(refid=([a-zA-Z0-9]*)\)")
 
 
 def parse_ref(entry, namespace, path):
@@ -247,8 +247,8 @@ def parse_ref(entry, namespace, path):
     if match is None:
         return None
 
-    kind, ref = parse_refid(None, match.group(0))
-    return Id(namespace, kind, ref), IdLocation(entry, namespace, path, orig_ref)
+    kind, ref = parse_refid(None, match.group(1))
+    return Id(namespace, kind, ref), IdLocation(entry, namespace, path, value)
 
 
 def find_text_references(tree_ortografi, tree_homografNr, tree):
