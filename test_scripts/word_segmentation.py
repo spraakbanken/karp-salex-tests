@@ -16,6 +16,9 @@ class SegmentationWarning(EntryWarning):
     neighbours_backwards: list[object]
     info: str
 
+    def collection(self):
+        return "Extra"
+
     def category(self):
         return f"Segmentering ({self.namespace})"
 
@@ -166,8 +169,6 @@ def test_word_segmentation(entries):
             for e in es:
                 yield SegmentationWarning2(e, SAOL, entry_ordled(e), plain, m, correct, ms[correct])
 
-    return
-
     sorted_entries = SortedSet(saol_entries, key=lambda e: e.entry["ortografi"])
     rev_sorted_entries = SortedSet(saol_entries, key=lambda e: e.entry["ortografi"][::-1])
 
@@ -185,10 +186,4 @@ def test_word_segmentation(entries):
 
             elif len(segments) > 1 and len(by_first_segment[segments[0]]) == 1 and len(by_last_segment[segments[-1]]) == 1:
                 yield SegmentationWarning(entry, SAOL, ordled, neighbours_forwards, neighbours_backwards, "segments")
-
-            if len(morphemes) > 1:
-                for m in morphemes:
-                    if len(decorated_morphemes[m]) > 1 and len(by_morpheme[m]) == 1:
-                        yield SegmentationWarning(entry, SAOL, ordled, [], [], "decorated " + ", ".join(decorated_morphemes[m]))
-
 
