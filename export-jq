@@ -1,0 +1,74 @@
+#!/bin/zsh
+# when comparing output, pipe both into: sed 's/ / /g;s/‑/-/g'
+
+jq < salex.json -c '
+.[].entry |
+del(..|select(.visas? == false or .endastDigitalt? == true)) | 
+select(.saol?) | 
+{
+  "ordklass": .ordklass,
+  "ingångstyp": .["ingångstyp"],
+  "ortografi": .ortografi,
+  "homografNr": .saol.homografNr,
+  "id": .saol.id,
+  "ordled": .saol.ordled,
+  "uttal": .saol.uttal | (. // []) | map({
+    "form": .form,
+    "typ": .typ
+  }),
+  "varumärken": .saol.["varumärken"],
+  "uttalskommentar": .saol.uttalskommentar,
+  "moderverb": .saol.moderverb,
+  "huvudlemma": .saol.huvudlemma,
+  "huvudbetydelser": .saol.huvudbetydelser? | (. // []) | map({
+      "id": .id,
+      "bruklighetskommentar": .bruklighetskommentar?,
+      "definition": .definition?,
+      "exempel": .exempel? | (. // []) | map({
+        "text": .text?,
+        "parafras": .parafras
+      }),
+      "formkommentar": .formkommentar | (if . == null or . == {} then null else {
+         "text": .text,
+         "tillägg": .["tillägg"]
+      } end),
+      "böjning": .["böjning"]?,
+      "böjningsklass": .["böjningsklass"]?,
+      "hänvisningar": .["hänvisningar"] | (. // []) | map({
+        "hänvisning": .["hänvisning"],
+        "typ": .typ
+      })
+    }),
+  "sammansättningskommentar": .saol["sammansättningskommentar"],
+  "böjning": .saol["böjning"],
+  "böjningsklass": .["böjningsklass"],
+  "uppdelas": .saol.uppdelas,
+  "variantformer": .saol.variantformer | (. // []) | map({
+    "böjning": .["böjning"],
+    "id": .id,
+    "homografNr": .homografNr,
+    "ordled": .ordled,
+    "ortografi": .ortografi,
+    "typ": .typ,
+    "uttal": .uttal,
+    "uppdelas": .uppdelas
+  })
+} |
+del(..|select(. == [] or . == null or . == {})) |
+del(..|select(. == [] or . == null or . == {})) |
+del(..|select(. == [] or . == null or . == {})) |
+del(..|select(. == [] or . == null or . == {})) |
+del(..|select(. == [] or . == null or . == {})) |
+.
+' | jq -s -c 'sort_by(.id)[]' -S | sed '
+s/"ordklass":"substantiv"/"ordklass":"s."/g;
+s/"ordklass":"adjektiv"/"ordklass":"adj."/g;
+s/"ordklass":"verb"/"ordklass":"v."/g;
+s/"ordklass":"adverb"/"ordklass":"adv."/g;
+s/"ordklass":"interjektion"/"ordklass":"interj."/g;
+s/"ordklass":"räkneord"/"ordklass":"räkn."/g;
+s/"ordklass":"pronomen"/"ordklass":"pron."/g;
+s/"ordklass":"preposition"/"ordklass":"prep."/g;
+s/"ordklass":"subjunktion"/"ordklass":"subj."/g;
+s/"ordklass":"konjunktion"/"ordklass":"konj."/g
+'
