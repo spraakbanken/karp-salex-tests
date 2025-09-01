@@ -26,6 +26,7 @@ from test_scripts.böjningar_first_form import test_böjningar_first
 from test_scripts.unabbreviated_inflections import test_unabbreviated_inflections
 from test_scripts.word_segmentation import test_word_segmentation
 from test_scripts.variantformer import test_variantformer
+from test_scripts.missing_variantformer import test_missing_variantformer
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -33,6 +34,7 @@ from pathlib import Path
 import typer
 from functools import partial
 from typing import Optional, Annotated
+import sys
 
 
 def func_name(func):
@@ -74,6 +76,8 @@ def main(
     entries_by_id = {entry.id: entry for entry in entries}
     ids = {}
 
+    new_variantformer = open("new_variantformer.jsonl", "w")
+
     tests = [
         partial(test_saol_missing, entries, inflection=inflection),
         partial(test_böjningar, entries, inflection=inflection),
@@ -96,6 +100,7 @@ def main(
         partial(test_unabbreviated_inflections, entries),
         partial(test_word_segmentation, entries),
         partial(test_variantformer, entries, ids),
+        partial(test_missing_variantformer, entries, ids, replacements_file=new_variantformer),
     ]
 
     if test:
