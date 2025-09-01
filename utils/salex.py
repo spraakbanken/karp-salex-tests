@@ -118,6 +118,19 @@ class IdLocation:
     def field(self):
         return json.path_str(self.path, strip_positions=True)
 
+    @property
+    def ortografi(self):
+        path = [self.namespace.path] + self.path
+        body = self.entry.entry
+        while path and not json.has_path(path + ["ortografi"], body):
+            path = path[:-1]
+
+        try:
+            return json.get_path(path + ["ortografi"], body)
+        except:
+            breakpoint()
+            raise
+
 
 id_fields = {
     SO: {

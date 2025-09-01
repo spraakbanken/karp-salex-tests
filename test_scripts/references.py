@@ -303,25 +303,36 @@ def test_references(entries, inflection, ids=None):
                     if id not in ids:
                         continue
                     target_entry = ids[id].entry
-                    target_word = target_entry.entry["ortografi"]
+                    target_word = ids[id].ortografi # target_entry.entry["ortografi"]
                     target_body = target_entry.entry.get(namespace.path, {})
 
                     if word == target_word:
                         continue
                     # Check to see if we find it in a variant form
-                    variants = list(variant_forms(target_entry, namespace))
-                    if word in variants:
-                        continue
+                    #variants = list(variant_forms(target_entry, namespace))
+                    #if word in variants:
+                    #    continue
 
                     # Check to see if we find it as an inflected form
-                    if word not in [
-                        form
-                        for w in [target_word, *variants]
-                        for form in [w]  # inflection.inflected_forms(target_entry, w)
-                    ]:
+                    #if word not in [
+                    #    form
+                    #    for w in [target_word, *variants]
+                    #    for form in [w]  # inflection.inflected_forms(target_entry, w)
+                    #]:
+                    else:
                         # TODO: report mistakenly pointing at variant
                         # form as a minor error?
-                        yield BadReference(loc, id, ids.get(id), f"pekar inte på {word}")
+                        #print(word, target_word, list(variant_forms(target_entry, namespace))),
+                        #if word == 'giva': breakpoint()
+                        if word in variant_forms(target_entry, namespace):
+                            warning = f"variantform eller vnomen av {target_word}"
+                        elif (namespace, word) in by_ortografi:
+                            warning = f"finns som lemma eller variantform"
+                        elif word in inflection.inflected_forms(target_entry, target_word):
+                            warning = f"böjningsform av {target_word}"
+                        else:
+                            warning = f"pekar inte på {word}"
+                        yield BadReference(loc, id, ids.get(id), warning)
 
             # Check fields that use +refid-syntax for references
             for field in refid_ref_fields[namespace]:
