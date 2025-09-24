@@ -439,7 +439,7 @@ class FieldWarning(EntryWarning):
 
 
 def entry_sort_key(entry, namespace):
-    return (entry.entry["ortografi"], entry_name(entry, namespace))
+    return (entry.entry["ortografi"].lower(), entry_name(entry, namespace))
 
 
 def parse_böjning(entry, namespace, only_alpha=True):

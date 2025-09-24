@@ -27,6 +27,8 @@ from test_scripts.unabbreviated_inflections import test_unabbreviated_inflection
 from test_scripts.word_segmentation import test_word_segmentation
 from test_scripts.variantformer import test_variantformer
 from test_scripts.missing_variantformer import test_missing_variantformer
+from test_scripts.so_too_many_references import test_so_too_many_references
+from test_scripts.so_definitions import test_so_definitions
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -101,6 +103,8 @@ def main(
         partial(test_word_segmentation, entries),
         partial(test_variantformer, entries, ids),
         partial(test_missing_variantformer, entries, ids, replacements_file=new_variantformer),
+        partial(test_so_too_many_references, entries),
+        partial(test_so_definitions, entries, inflection),
     ]
 
     if test:
