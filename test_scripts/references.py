@@ -172,6 +172,7 @@ def test_references(entries, inflection, ids=None):
                 ids[id] = source
                 all_ids[id].append(source)
 
+    return
     # Populate index by ortografi/homografNr
     for id, sources in all_ids.items():
         for source in sources:

@@ -2,11 +2,12 @@ from karp.foundation import json
 from collections import Counter, defaultdict
 from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
-from utils.salex import visible_part, full_ref_regexp, variant_forms, SO, EntryWarning, entry_cell, entry_sort_key, parse_böjning
+from utils.salex import visible_part, full_ref_regexp, variant_forms, SO, EntryWarning, entry_cell, entry_sort_key, parse_böjning, parse_refid, Id
 from karp.lex.domain.dtos import EntryDto
 from enum import Enum, global_enum
 from copy import deepcopy
 from dataclasses import dataclass
+from functools import total_ordering
 
 @dataclass(frozen=True)
 class DefinitionLinkSuggestion(EntryWarning):
@@ -34,11 +35,15 @@ class DefinitionLinkSuggestion(EntryWarning):
         return (self.pattern, super().sort_key())
 
 @global_enum
+@total_ordering
 class Kind(Enum):
     LEMMA = 0
     VARIANT = 1
     VNOMEN = 2
     BÖJNINGSFORM = 3
+
+    def __lt__(self, other):
+        return self.value < other.value
 
 def similar(d1, d2, n=1):
     if len(d1) != len(d2): return False
@@ -90,7 +95,7 @@ def summarise(n=1, prefix=(), limit=100, indent=0):
 
 #summarise(limit=20)
 
-def test_so_definitions(entries, inflection):
+def test_so_definitions(entries, inflection, ids):
     forms = defaultdict(lambda: defaultdict(list))
     for entry in tqdm(entries, desc="Collecting inflected forms"):
         if "so" in entry.entry and entry.entry["so"].get("visas", True):
@@ -110,18 +115,27 @@ def test_so_definitions(entries, inflection):
         for variant in vnomen:
             forms[variant][VNOMEN].append(entry)
         for variant in variant_forms(entry, SO, include_main_form=True):
-            for inflected in set(list(inflection.inflected_forms(entry, variant)) + parse_böjning(entry, SO)):
+            for inflected in set(inflection.inflected_forms(entry, variant)):
                 if inflected != variant:
                     forms[inflected][BÖJNINGSFORM].append(entry)
 
     original_definitions = {}
 
     definitions = defaultdict(list)
+    definition_targets = defaultdict(list)
     for entry in tqdm(entries, desc="Checking SO definitions"):
         body = visible_part(entry.entry)
         for field in fields:
             for path in json.expand_path(field, body):
                 definition = tokenize(json.get_path(path, body))
+                for link in full_ref_regexp.findall(json.get_path(path, body)):
+                    kind, ref = parse_refid(None, link)
+                    id = Id(SO, kind, ref)
+                    if id in ids:
+                        definition_targets[definition].append(ids[id].entry)
+                    else:
+                        print("*** missing", id)
+
                 definitions[definition].append(entry)
                 original_definitions[(definition, entry.id)] = json.get_path(path, body)
 
@@ -129,29 +143,43 @@ def test_so_definitions(entries, inflection):
 
     for d, c in counts.items():
         if len([x for x in d if x == "REF"]) == 1 and c >= 10:
+            allowed_classes = {entry.entry["ordklass"] for entry in definition_targets[d]}
+            #allowed_classes = {entry.entry["ordklass"]: entry.entry["ortografi"] for entry in definition_targets[d]}
+            print(d, allowed_classes)
             orig = original_definitions[(d, definitions[d][0].id)]
             #print(c, unref(orig))
             for d1, c1 in counts.items():
                 if d == d1: continue
                 if similar(d, d1):
-                    ref_word = match(d, d1)
-                    orig = original_definitions[(d1, definitions[d1][0].id)]
+                    for word in definitions[d1]:
+                        ref_word = match(d, d1)
+                        orig = original_definitions[(d1, word.id)]
 
-                    suggestions = []
-                    suggestions += forms[ref_word][LEMMA]
-                    suggestions += forms[ref_word][VARIANT]
+                        def key(x): return entry_sort_key(x, SO)
+                        if d == ("REF",):
+                            print("REF REF REF")
+                            def arrange(lst):
+                                return sorted(lst, key=key)
+                        else:
+                            def arrange(lst):
+                                return sorted([x for x in lst if x.entry["ordklass"] in allowed_classes], key=key)
+                        suggestions = []
+                        suggestions += arrange(forms[ref_word][LEMMA])
+                        #suggestions += arrange(forms[ref_word][VARIANT])
 
-                    if not suggestions:
-                        suggestions += forms[ref_word][VNOMEN]
-                        suggestions += forms[ref_word][BÖJNINGSFORM]
+                        #if not suggestions:
+                        #suggestions += arrange(forms[ref_word][VNOMEN])
+                        #suggestions += arrange(forms[ref_word][BÖJNINGSFORM])
 
-                    # remove duplicates
-                    suggestions = [x for x in {s.id: s for s in suggestions}.values()]
+                        # remove duplicates
+                        suggestions = [x for x in {s.id: s for s in suggestions}.values()]
 
-                    suggestions.sort(key=lambda x: entry_sort_key(x, SO))
-
-                    yield DefinitionLinkSuggestion(definitions[d1][0], SO, d, orig, suggestions)
-                    #print("  ", format(definitions[d1][0]) + ":", orig)
-                    #for kind, es in forms[ref_word].items():
-                    #    for e in es:
-                    #        print("     =>", kind, format(e))
+                        if len(suggestions) == 1:
+                            suggestion = suggestions[0]
+                            hb = visible_part(suggestion.entry)["so"]["huvudbetydelser"]
+                            if len(hb) == 1:
+                                yield DefinitionLinkSuggestion(word, SO, d, orig, suggestions)
+                        #print("  ", format(definitions[d1][0]) + ":", orig)
+                        #for kind, es in forms[ref_word].items():
+                        #    for e in es:
+                        #        print("     =>", kind, format(e))

@@ -29,6 +29,7 @@ from test_scripts.variantformer import test_variantformer
 from test_scripts.missing_variantformer import test_missing_variantformer
 from test_scripts.so_too_many_references import test_so_too_many_references
 from test_scripts.so_definitions import test_so_definitions
+from test_scripts.so_endings import test_so_endings
 from tqdm import tqdm
 from utils.inflection import Inflection
 from itertools import islice
@@ -104,7 +105,8 @@ def main(
         partial(test_variantformer, entries, ids),
         partial(test_missing_variantformer, entries, ids, replacements_file=new_variantformer),
         partial(test_so_too_many_references, entries),
-        partial(test_so_definitions, entries, inflection),
+        partial(test_so_definitions, entries, inflection, ids),
+        partial(test_so_endings, entries),
     ]
 
     if test:
