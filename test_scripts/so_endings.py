@@ -3,11 +3,11 @@ from tqdm import tqdm
 from karp.foundation import json
 from karp.lex.domain.dtos import EntryDto
 from nltk.tokenize import RegexpTokenizer
-import re
 from collections import Counter, defaultdict
 from test_scripts.references import refid_re
 
 from dataclasses import dataclass
+
 
 @dataclass(frozen=True)
 class EndingLinkSuggestion(EntryWarning):
@@ -26,31 +26,32 @@ class EndingLinkSuggestion(EntryWarning):
         return super().to_dict(include_ordbok=False) | {
             "Definition": self.definition,
             "Mönster": f"-{self.pattern[0]} => -{self.pattern[1]}",
-            "HV": entry_cell(self.suggestion, SO)
+            "HV": entry_cell(self.suggestion, SO),
         }
 
     def sort_key(self):
-        pattern = self.pattern if self.frequency > 1 else ["zzz", "zzz"]
         return (self.pattern, super().sort_key())
 
 
-definition_fields = {
-    "so.huvudbetydelser.definition",
-    "so.huvudbetydelser.underbetydelser.definition"
-}
+definition_fields = {"so.huvudbetydelser.definition", "so.huvudbetydelser.underbetydelser.definition"}
 
-tokenizer = RegexpTokenizer(r'\w+')
+tokenizer = RegexpTokenizer(r"\w+")
+
 
 def unref(s):
     return full_ref_regexp.subn("REF", s)[0]
 
+
 def tokenize(s):
     return tuple(tokenizer.tokenize(unref(s)))
 
+
 common_letters = 5
+
 
 def common_prefix(w1, w2):
     return len(w1) >= common_letters and len(w2) >= common_letters and w1[:common_letters] == w2[:common_letters]
+
 
 def strip_prefix(w1, w2):
     while w1 and w2 and w1[0] == w2[0]:
@@ -58,6 +59,7 @@ def strip_prefix(w1, w2):
         w2 = w2[1:]
 
     return w1, w2
+
 
 def test_so_endings(entries):
     words = defaultdict(list)
@@ -93,7 +95,8 @@ def test_so_endings(entries):
     for (a, b), total_count in totals.most_common():
         count = rules[a, b]
         not_count = not_rules[(a, b)]
-        if count <= 1 or not_count == 0: continue
+        if count <= 1 or not_count == 0:
+            continue
         for entry, word, definition in not_rules_entries[a, b]:
             if len(words[word]) >= 1:
                 suggestion = words[word][0]

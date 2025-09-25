@@ -23,17 +23,16 @@ class InflectionWarning(EntryWarning):
 def test_böjningar_first(inflection, entries):
     for entry in tqdm(entries, desc="Checking first inflected forms"):
         entry = visible_part(entry)
-        if "saol" not in entry.entry: continue
+        if "saol" not in entry.entry:
+            continue
 
         word = entry.entry.get("ortografi")
         inflected_forms = list(inflection.inflected_forms(entry, tag=True))
         inflection_table = {tag: form for tag, form in inflected_forms}
-        if not inflection_table: continue
+        if not inflection_table:
+            continue
 
-        try:
-            form = inflection_table.get("V0N0A") or inflection_table["V0N0D"]
-        except:
-            form = inflected_forms[0][1]
+        form = inflection_table.get("V0N0A") or inflection_table.get("V0N0D") or inflected_forms[0][1]
 
         if word != form:
             yield InflectionWarning(entry, SAOL, form)

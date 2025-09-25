@@ -1,9 +1,7 @@
 from tqdm import tqdm
-from collections import defaultdict
 from utils.salex import visible_part, EntryWarning, SO, ref_regexp
 from utils.testing import markup_cell
 from dataclasses import dataclass
-from copy import deepcopy
 from karp.foundation import json
 
 
@@ -19,12 +17,11 @@ class SOTooManyReferences(EntryWarning):
         return "Många hänvisningar"
 
     def to_dict(self):
-        return super().to_dict(include_ordbok=False) | {
-            "Fält": self.field,
-            "Text": markup_cell(self.value)
-        }
+        return super().to_dict(include_ordbok=False) | {"Fält": self.field, "Text": markup_cell(self.value)}
+
 
 too_many = 2
+
 
 def test_so_too_many_references(entries):
     for entry in tqdm(entries, desc="Finding SO entries with too many references"):
@@ -32,9 +29,11 @@ def test_so_too_many_references(entries):
 
         for path in json.all_paths(body):
             field = json.path_str(path, strip_positions=True)
-            if field.endswith("etymologi"): continue
+            if field.endswith("etymologi"):
+                continue
             value = json.get_path(path, body)
-            if not isinstance(value, str): continue
+            if not isinstance(value, str):
+                continue
 
             reference_count = len(list(ref_regexp.findall(value)))
             if reference_count >= too_many:

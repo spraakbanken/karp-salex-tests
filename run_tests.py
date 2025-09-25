@@ -37,7 +37,6 @@ from pathlib import Path
 import typer
 from functools import partial
 from typing import Optional, Annotated
-import sys
 
 
 def func_name(func):
@@ -76,7 +75,6 @@ def main(
         entries = [e for e in entries if e.entry["ortografi"] in words]
 
     inflection = Inflection(entry_queries, entries)
-    entries_by_id = {entry.id: entry for entry in entries}
     ids = {}
 
     new_variantformer = open("new_variantformer.jsonl", "w")

@@ -12,7 +12,7 @@ uttal_re = re.compile(r" \[r \\\[[^\]]*\\\]\]")
 class SuspiciousInflection(EntryWarning):
     inflection: str | None
     inflection_class: str
-    example_word: object # entry
+    example_word: object  # entry
     example_inflection: str | None
 
     def category(self):
@@ -23,7 +23,7 @@ class SuspiciousInflection(EntryWarning):
             "Böjningsklass": self.inflection_class,
             "Böjning": markup_cell(self.inflection or ""),
             "Exempelord i klassen": entry_cell(self.example_word, self.namespace),
-            "Exempelords böjning": markup_cell(self.example_inflection or "")
+            "Exempelords böjning": markup_cell(self.example_inflection or ""),
         }
 
     def sort_key(self):
@@ -44,19 +44,20 @@ def lcp(s1, s2):
         if s1[i] != s2[i]:
             break
         i += 1
-    
+
     return s1[:i], s1[i:], s2[i:]
+
 
 def lcp_plus(s1, s2):
     candidates = []
     if s1.startswith("-"):
-        candidates = [(s1[1:], s2[i:]) for i in range(len(s2)+1)]
+        candidates = [(s1[1:], s2[i:]) for i in range(len(s2) + 1)]
     if s2.startswith("-"):
-        candidates = [(s1[i:], s2[1:]) for i in range(len(s1)+1)]
+        candidates = [(s1[i:], s2[1:]) for i in range(len(s1) + 1)]
     if s1.endswith("-"):
-        candidates = [(s1[:-1], s2[:i]) for i in range(len(s2)+1)]
+        candidates = [(s1[:-1], s2[:i]) for i in range(len(s2) + 1)]
     if s2.endswith("-"):
-        candidates = [(s1[:i], s2[:-1]) for i in range(len(s1)+1)]
+        candidates = [(s1[:i], s2[:-1]) for i in range(len(s1) + 1)]
 
     prefix, suf1, suf2 = lcp(s1, s2)
     for s1a, s2a in candidates:
@@ -66,23 +67,6 @@ def lcp_plus(s1, s2):
 
     return prefix, suf1, suf2
 
-def get_inflection(entry, namespace):
-    ok = True
-    ortografi = entry.entry["ortografi"]
-    inflection = entry.entry[namespace.path].get("böjning")
-    forms = parse_böjning(entry, namespace, only_alpha=False)
-    replacements = {}
-    for form in forms:
-        for f in form.split():
-            if not f.startswith("~"):
-                prefix, suffix_f, suffix_ortografi = lcp_plus(f, ortografi)
-                if len(prefix) >= 3:
-                    replacements[f] = f"~{suffix_ortografi}→~{suffix_f}"
-                else:
-                    ok = False
-    for x, y in replacements.items():
-        inflection = inflection.replace(x, y)
-    return inflection, ok
 
 def get_inflection(inflection, entry, namespace):
     forms = list(inflection.inflected_forms(entry, tag=True))
@@ -93,21 +77,22 @@ def get_inflection(inflection, entry, namespace):
     for form in parse_böjning(entry, namespace, only_alpha=False):
         for f in form.split():
             if f.startswith("~"):
-                test = lambda w: w == word + f[1:]
+                test = lambda w: w == word + f[1:]  # noqa: E731
             elif f.startswith("-"):
-                test = lambda w: w.endswith(f[1:])
+                test = lambda w: w.endswith(f[1:])  # noqa: E731
             else:
-                test = lambda w: w == f
+                test = lambda w: w == f  # noqa: E731
 
             candidates = [tag for tag, f in forms if test(f)]
             if candidates:
-                #replacements[f] = "/".join(str(i) for i in candidates)
+                # replacements[f] = "/".join(str(i) for i in candidates)
                 replacements[f] = f"[{candidates[0]}]"
 
     for x, y in replacements.items():
         böjning = re.sub(rf"(?<!\w){x}(?!\w)", y, böjning)
 
     return böjning
+
 
 def test_inflection_class_vs_inflection(inflection, entries):
     by_inflection_class = defaultdict(list)
@@ -121,12 +106,12 @@ def test_inflection_class_vs_inflection(inflection, entries):
             inflection_counts = Counter()
             inflection_samples = {}
             for entry in entries:
-                #if entry.entry["ortografi"] == "avsvedd": breakpoint()
+                # if entry.entry["ortografi"] == "avsvedd": breakpoint()
                 if namespace.path not in entry.entry:
                     continue
                 if not is_visible(namespace.path, entry.entry):
                     continue
-                #if entry.entry.get("ingångstyp") in ["se under", "variant", "reflexivt_verb", "partikelverb"]:
+                # if entry.entry.get("ingångstyp") in ["se under", "variant", "reflexivt_verb", "partikelverb"]:
                 #    continue
 
                 inflection_desc = get_inflection(inflection, entry, namespace)
@@ -136,7 +121,6 @@ def test_inflection_class_vs_inflection(inflection, entries):
 
             if inflection_counts:
                 expected_inflection, _ = inflection_counts.most_common(1)[0]
-                sample_entry = inflection_samples[expected_inflection]
 
             else:
                 continue

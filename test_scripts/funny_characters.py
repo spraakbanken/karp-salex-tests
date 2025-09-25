@@ -60,8 +60,10 @@ html_entity_re = re.compile(r"&#?\w+;")
 def test_funny_characters(entries):
     counter = Counter()
     for entry in tqdm(entries, desc="Finding funny characters"):
-        #for path in list(x for field in ["so.böjning", "so.variantformer.böjning", "saol.böjning", "saol.variantformer.böjning"] for x in json.expand_path(field, entry.entry)):
-        for path in list(x for field in ["so.böjning", "so.variantformer.böjning"] for x in json.expand_path(field, entry.entry)):
+        # for path in list(x for field in ["so.böjning", "so.variantformer.böjning", "saol.böjning", "saol.variantformer.böjning"] for x in json.expand_path(field, entry.entry)):
+        for path in list(
+            x for field in ["so.böjning", "so.variantformer.böjning"] for x in json.expand_path(field, entry.entry)
+        ):
             if "fonetikparentes" in path:
                 continue
 

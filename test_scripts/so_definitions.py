@@ -2,12 +2,23 @@ from karp.foundation import json
 from collections import Counter, defaultdict
 from nltk.tokenize import RegexpTokenizer
 from tqdm import tqdm
-from utils.salex import visible_part, full_ref_regexp, variant_forms, SO, EntryWarning, entry_cell, entry_sort_key, parse_böjning, parse_refid, Id
+from utils.salex import (
+    visible_part,
+    full_ref_regexp,
+    variant_forms,
+    SO,
+    EntryWarning,
+    entry_cell,
+    entry_sort_key,
+    parse_refid,
+    Id,
+)
 from karp.lex.domain.dtos import EntryDto
 from enum import Enum, global_enum
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import total_ordering
+
 
 @dataclass(frozen=True)
 class DefinitionLinkSuggestion(EntryWarning):
@@ -22,9 +33,7 @@ class DefinitionLinkSuggestion(EntryWarning):
         return f"Definitioner {self.namespace}"
 
     def to_dict(self):
-        result = super().to_dict(include_ordbok=False) | {
-            "Definition": self.definition
-        }
+        result = super().to_dict(include_ordbok=False) | {"Definition": self.definition}
 
         for i, entry in enumerate(self.suggestions, start=1):
             result[f"HV {i}"] = entry_cell(entry, self.namespace)
@@ -33,6 +42,7 @@ class DefinitionLinkSuggestion(EntryWarning):
 
     def sort_key(self):
         return (self.pattern, super().sort_key())
+
 
 @global_enum
 @total_ordering
@@ -45,17 +55,21 @@ class Kind(Enum):
     def __lt__(self, other):
         return self.value < other.value
 
+
 def similar(d1, d2, n=1):
-    if len(d1) != len(d2): return False
+    if len(d1) != len(d2):
+        return False
 
     for w1, w2 in zip(d1, d2):
-        if w1 == w2: continue
+        if w1 == w2:
+            continue
         elif w1 == "REF" and not w2[0].isupper() and n > 0:
             n -= 1
         else:
             return False
-    
+
     return True
+
 
 def match(d1, d2):
     for w1, w2 in zip(d1, d2):
@@ -64,36 +78,46 @@ def match(d1, d2):
 
     raise AssertionError("didn't match")
 
-fields = ["so.huvudbetydelser.definition",
-          #"so.huvudbetydelser.definitionstillägg",
-          "so.huvudbetydelser.underbetydelser.definition",
-          #"so.huvudbetydelser.underbetydelser.definitionstillägg",
-          #"so.huvudbetydelser.idiom.idiombetydelser.definition",
-          #"so.huvudbetydelser.idiom.idiombetydelser.definitionstillägg"
-          ]
 
-tokenizer = RegexpTokenizer(r'\w+')
+fields = [
+    "so.huvudbetydelser.definition",
+    # "so.huvudbetydelser.definitionstillägg",
+    "so.huvudbetydelser.underbetydelser.definition",
+    # "so.huvudbetydelser.underbetydelser.definitionstillägg",
+    # "so.huvudbetydelser.idiom.idiombetydelser.definition",
+    # "so.huvudbetydelser.idiom.idiombetydelser.definitionstillägg"
+]
+
+tokenizer = RegexpTokenizer(r"\w+")
+
 
 def unref(s):
     return full_ref_regexp.subn("REF", s)[0]
 
+
 def tokenize(s):
     return tuple(tokenizer.tokenize(unref(s)))
 
+
 def ngram_counts(n, prefix):
-    return Counter(d[:n] for d in definitions if d[:len(prefix)] == prefix)
+    return Counter(d[:n] for d in definitions if d[: len(prefix)] == prefix)
+
 
 def summarise(n=1, prefix=(), limit=100, indent=0):
     counts = ngram_counts(n, prefix)
 
     for ngram, count in counts.most_common():
-        if ngram == prefix: break
+        if ngram == prefix:
+            break
 
         print(f'{indent * " "}{count} {" ".join(ngram)}')
-        if count < limit: break
-        summarise(n+1, ngram, limit, indent+2)
+        if count < limit:
+            break
+        summarise(n + 1, ngram, limit, indent + 2)
 
-#summarise(limit=20)
+
+# summarise(limit=20)
+
 
 def test_so_definitions(entries, inflection, ids):
     forms = defaultdict(lambda: defaultdict(list))
@@ -103,8 +127,8 @@ def test_so_definitions(entries, inflection, ids):
         variants_plus_vnomen = list(variant_forms(entry, SO))
         if "so" in entry.entry and "vnomen" in entry.entry["so"]:
             entry_no_vnomen = deepcopy(entry)
-            del entry.entry["so"]["vnomen"]
-            variants = list(variant_forms(entry, SO))
+            del entry_no_vnomen.entry["so"]["vnomen"]
+            variants = list(variant_forms(entry_no_vnomen, SO))
             vnomen = list(set(variants_plus_vnomen) - set(variants))
         else:
             variants = variants_plus_vnomen
@@ -144,32 +168,38 @@ def test_so_definitions(entries, inflection, ids):
     for d, c in counts.items():
         if len([x for x in d if x == "REF"]) == 1 and c >= 10:
             allowed_classes = {entry.entry["ordklass"] for entry in definition_targets[d]}
-            #allowed_classes = {entry.entry["ordklass"]: entry.entry["ortografi"] for entry in definition_targets[d]}
+            # allowed_classes = {entry.entry["ordklass"]: entry.entry["ortografi"] for entry in definition_targets[d]}
             print(d, allowed_classes)
             orig = original_definitions[(d, definitions[d][0].id)]
-            #print(c, unref(orig))
+            # print(c, unref(orig))
             for d1, c1 in counts.items():
-                if d == d1: continue
+                if d == d1:
+                    continue
                 if similar(d, d1):
                     for word in definitions[d1]:
                         ref_word = match(d, d1)
                         orig = original_definitions[(d1, word.id)]
 
-                        def key(x): return entry_sort_key(x, SO)
+                        def key(x):
+                            return entry_sort_key(x, SO)
+
                         if d == ("REF",):
                             print("REF REF REF")
+
                             def arrange(lst):
                                 return sorted(lst, key=key)
                         else:
+
                             def arrange(lst):
                                 return sorted([x for x in lst if x.entry["ordklass"] in allowed_classes], key=key)
+
                         suggestions = []
                         suggestions += arrange(forms[ref_word][LEMMA])
-                        #suggestions += arrange(forms[ref_word][VARIANT])
+                        # suggestions += arrange(forms[ref_word][VARIANT])
 
-                        #if not suggestions:
-                        #suggestions += arrange(forms[ref_word][VNOMEN])
-                        #suggestions += arrange(forms[ref_word][BÖJNINGSFORM])
+                        # if not suggestions:
+                        # suggestions += arrange(forms[ref_word][VNOMEN])
+                        # suggestions += arrange(forms[ref_word][BÖJNINGSFORM])
 
                         # remove duplicates
                         suggestions = [x for x in {s.id: s for s in suggestions}.values()]
@@ -179,7 +209,7 @@ def test_so_definitions(entries, inflection, ids):
                             hb = visible_part(suggestion.entry)["so"]["huvudbetydelser"]
                             if len(hb) == 1:
                                 yield DefinitionLinkSuggestion(word, SO, d, orig, suggestions)
-                        #print("  ", format(definitions[d1][0]) + ":", orig)
-                        #for kind, es in forms[ref_word].items():
+                        # print("  ", format(definitions[d1][0]) + ":", orig)
+                        # for kind, es in forms[ref_word].items():
                         #    for e in es:
                         #        print("     =>", kind, format(e))

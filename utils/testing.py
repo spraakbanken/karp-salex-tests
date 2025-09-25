@@ -347,7 +347,9 @@ def read_test_reports_excel(path) -> dict[str, TestReport]:
         header = next(rows)
         cells = list(rows)
         result[sheet.title] = TestReport(
-            fields=[cell.value for cell in header], extra_fields=[], rows=[[cell.value for cell in row] for row in cells]
+            fields=[cell.value for cell in header],
+            extra_fields=[],
+            rows=[[cell.value for cell in row] for row in cells],
         )
     return result
 
@@ -402,7 +404,9 @@ def remove_old_warnings(test_reports, old_test_reports):
                 key = get_key(old_report.fields, report.extra_fields, row)
                 old_warnings.add(key)
 
-            report.rows = [row for row in report.rows if get_key(report.fields, report.extra_fields, row) not in old_warnings]
+            report.rows = [
+                row for row in report.rows if get_key(report.fields, report.extra_fields, row) not in old_warnings
+            ]
 
 
 def write_test_reports_excel(path, test_reports):

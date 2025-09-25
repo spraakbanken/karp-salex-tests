@@ -155,8 +155,9 @@ def test_references(entries, inflection, ids=None):
     # Read in all IDs and check for duplicates
     for e in tqdm(entries, desc="Finding IDs"):
         for id, source in find_ids(e):
-            if id.namespace == SAOL and e.entry.get("ingångstyp") == "variant": continue
-            #if id.type == TEXT and id.id.homografNr == 3: breakpoint()
+            if id.namespace == SAOL and e.entry.get("ingångstyp") == "variant":
+                continue
+            # if id.type == TEXT and id.id.homografNr == 3: breakpoint()
             if id in ids:
                 if better(id, source, ids[id]):
                     ids[id] = source
@@ -221,7 +222,7 @@ def test_references(entries, inflection, ids=None):
 
         if any(id.id.homografNr is None for id in homograf_ids):
             if len(homograf_ids) > 1:  # missing hnr
-                #if ortografi == "chip": breakpoint()
+                # if ortografi == "chip": breakpoint()
                 yield HomografWrong(namespace, ortografi, homografer, "homografnummer saknas")
 
             continue
@@ -304,31 +305,30 @@ def test_references(entries, inflection, ids=None):
                     if id not in ids:
                         continue
                     target_entry = ids[id].entry
-                    target_word = ids[id].ortografi # target_entry.entry["ortografi"]
-                    target_body = target_entry.entry.get(namespace.path, {})
+                    target_word = ids[id].ortografi  # target_entry.entry["ortografi"]
 
                     if word == target_word:
                         continue
                     # Check to see if we find it in a variant form
-                    #variants = list(variant_forms(target_entry, namespace))
-                    #if word in variants:
+                    # variants = list(variant_forms(target_entry, namespace))
+                    # if word in variants:
                     #    continue
 
                     # Check to see if we find it as an inflected form
-                    #if word not in [
+                    # if word not in [
                     #    form
                     #    for w in [target_word, *variants]
                     #    for form in [w]  # inflection.inflected_forms(target_entry, w)
-                    #]:
+                    # ]:
                     else:
                         # TODO: report mistakenly pointing at variant
                         # form as a minor error?
-                        #print(word, target_word, list(variant_forms(target_entry, namespace))),
-                        #if word == 'giva': breakpoint()
+                        # print(word, target_word, list(variant_forms(target_entry, namespace))),
+                        # if word == 'giva': breakpoint()
                         if word in variant_forms(target_entry, namespace):
                             warning = f"variantform eller vnomen av {target_word}"
                         elif (namespace, word) in by_ortografi:
-                            warning = f"finns som lemma eller variantform"
+                            warning = "finns som lemma eller variantform"
                         elif word in inflection.inflected_forms(target_entry, target_word):
                             warning = f"böjningsform av {target_word}"
                         else:

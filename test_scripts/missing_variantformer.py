@@ -1,9 +1,9 @@
-from utils.salex import EntryWarning, entry_cell, Id, SAOL, LNR, IdLocation, parse_ref, visible_part, entry_is_visible_in_printed_book
+from utils.salex import EntryWarning, SAOL, visible_part, entry_is_visible_in_printed_book
 from dataclasses import dataclass
 from tqdm import tqdm
 import json
-from karp.foundation import json as karp_json
 from karp.foundation.value_objects.unique_id import make_unique_id
+
 
 @dataclass(frozen=True)
 class VariantWarning(EntryWarning):
@@ -18,6 +18,7 @@ class VariantWarning(EntryWarning):
             "Huvudlemma": result["Ord"],
             "Variantform": self.variant,
         }
+
 
 def make_variant_form(entry, variant):
     body = entry.entry["saol"]
@@ -37,7 +38,7 @@ def make_variant_form(entry, variant):
             "endastDigitalt": variant.get("endastDigitalt", False) or body.get("endastDigitalt", False),
             "ordled": variant["ordled"],
             "huvudlemma": f"+{huvudlemma_text}(refid=lnr{huvudlemma_id})",
-        }
+        },
     }
 
     for field in ["homografNr", "böjning"]:
@@ -45,6 +46,7 @@ def make_variant_form(entry, variant):
             result["saol"][field] = variant[field]
 
     return result
+
 
 def test_missing_variantformer(entries, ids, replacements_file=None):
     variant_ids = set()

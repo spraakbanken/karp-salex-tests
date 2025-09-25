@@ -13,6 +13,7 @@ class OrdledWarning(EntryWarning):
     def to_dict(self):
         return super().to_dict() | {"Ordled": self.ordled}
 
+
 @dataclass(frozen=True)
 class UppdelasWarning(EntryWarning):
     ordled: str
@@ -23,6 +24,7 @@ class UppdelasWarning(EntryWarning):
 
     def to_dict(self):
         return super().to_dict() | {"Ordled": self.ordled, "Uppdelas": "ja" if self.uppdelas else "nej"}
+
 
 def test_ordled_agreement(entries):
     for entry in tqdm(entries, desc="Checking ordled agreement"):
@@ -69,10 +71,19 @@ def test_ordled_agreement(entries):
             if should_be_divided != uppdelas:
                 yield UppdelasWarning(entry, SAOL, ordled, uppdelas)
 
+
 def test_ordled_format(entries):
     for entry in tqdm(entries, desc="Checking ordled format"):
         ordled = entry.entry.get("saol", {}).get("ordled")
-        if not ordled: continue
+        if not ordled:
+            continue
 
-        if ordled.startswith("·") or ordled.startswith("|") or ordled.endswith("·") or ordled.endswith("|") or "··" in ordled or "." in ordled:
+        if (
+            ordled.startswith("·")
+            or ordled.startswith("|")
+            or ordled.endswith("·")
+            or ordled.endswith("|")
+            or "··" in ordled
+            or "." in ordled
+        ):
             yield OrdledWarning(entry, SAOL, ordled)
